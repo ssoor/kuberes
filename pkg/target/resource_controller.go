@@ -167,7 +167,7 @@ func (rc *ResourceController) refreshMap(resourceMap map[string]interface{}, key
 func (rc *ResourceController) refreshFields(res *resource.Resource, fields []FieldSpec, fn func(resource.GVKID, FieldPath, interface{}) (interface{}, error)) error {
 	for _, field := range fields {
 		for _, path := range field.Paths {
-			err := rc.refreshMap(res.Object, path.Slice(), field.Create, func(in interface{}) (interface{}, error) {
+			err := rc.refreshMap(res.Map(), path.Slice(), field.Create, func(in interface{}) (interface{}, error) {
 				return fn(field.GVKID, path, in)
 			})
 

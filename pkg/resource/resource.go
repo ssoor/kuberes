@@ -73,6 +73,11 @@ func (r *Resource) ID() ID {
 	return GVKID{gvk.Group, gvk.Version, gvk.Kind}
 }
 
+// Map returns the Map for the resource.
+func (r *Resource) Map() map[string]interface{} {
+	return r.Object
+}
+
 // Header returns the header for the resource.
 func (r *Resource) Header() Header {
 	return r
@@ -118,7 +123,7 @@ func (r *Resource) IsGenerated() bool {
 // Merge performs merge with other resource.
 func (r *Resource) Merge(other *Resource) {
 	r.Replace(other)
-	mergeConfigmap(r.Object, other.Object, r.Object)
+	mergeConfigmap(r.Map(), other.Map(), r.Map())
 }
 
 // Replace performs replace with other resource.
