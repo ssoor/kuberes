@@ -23,9 +23,6 @@ func isEmptyYamlError(err error) bool {
 // RuleMap is a map from resource ID to Resource.
 type RuleMap map[resource.ID]RuleSpec
 
-// ResourceMap is a map from resource ID to Resource.
-type ResourceMap map[resource.ID]*resource.Resource
-
 // ResourceController is
 type ResourceController struct {
 	rules     RuleMap
