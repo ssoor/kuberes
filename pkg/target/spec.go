@@ -36,7 +36,7 @@ func (rs FieldPath) Slice() []string {
 
 // FieldSpec is
 type FieldSpec struct {
-	resource.GroupVersionKind `json:",inline,omitempty" yaml:",inline,omitempty"`
+	resource.GVKID `json:",inline,omitempty" yaml:",inline,omitempty"`
 
 	Create bool        `json:"create,omitempty" yaml:"create,omitempty"`
 	Paths  []FieldPath `json:"paths,omitempty" yaml:"paths,omitempty"`
@@ -44,7 +44,7 @@ type FieldSpec struct {
 
 // RuleSpec is
 type RuleSpec struct {
-	resource.GroupVersionKind `json:",inline,omitempty" yaml:",inline,omitempty"`
+	resource.GVKID `json:",inline,omitempty" yaml:",inline,omitempty"`
 
 	MatedataName        []FieldSpec `json:"matedata.name,omitempty" yaml:"matedata.name,omitempty"`
 	MatedataLabels      []FieldSpec `json:"matedata.labels,omitempty" yaml:"matedata.labels,omitempty"`

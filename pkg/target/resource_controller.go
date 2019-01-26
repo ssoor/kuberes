@@ -46,7 +46,7 @@ func NewResourceController() (*ResourceController, error) {
 	}
 
 	for _, rule := range rules {
-		control.rules[rule.GroupVersionKind] = rule
+		control.rules[rule.GVKID] = rule
 	}
 
 	return control, nil
@@ -167,11 +167,11 @@ func (rc *ResourceController) refreshMap(resourceMap map[string]interface{}, key
 	}
 }
 
-func (rc *ResourceController) refreshFields(res *resource.Resource, fields []FieldSpec, fn func(resource.GroupVersionKind, FieldPath, interface{}) (interface{}, error)) error {
+func (rc *ResourceController) refreshFields(res *resource.Resource, fields []FieldSpec, fn func(resource.GVKID, FieldPath, interface{}) (interface{}, error)) error {
 	for _, field := range fields {
 		for _, path := range field.Paths {
 			err := rc.refreshMap(res.Object, path.Slice(), field.Create, func(in interface{}) (interface{}, error) {
-				return fn(field.GroupVersionKind, path, in)
+				return fn(field.GVKID, path, in)
 			})
 
 			if nil != err {
@@ -209,21 +209,21 @@ func (rc *ResourceController) RefreshReferences() (err error) {
 			continue
 		}
 
-		err = rc.refreshFields(res, references.MatedataName, func(gvk resource.GroupVersionKind, path FieldPath, in interface{}) (interface{}, error) {
+		err = rc.refreshFields(res, references.MatedataName, func(gvk resource.GVKID, path FieldPath, in interface{}) (interface{}, error) {
 			return res.GetName(), nil
 		})
 		if nil != err {
 			return err
 		}
 
-		err = rc.refreshFields(res, references.MatedataLabels, func(gvk resource.GroupVersionKind, path FieldPath, in interface{}) (interface{}, error) {
+		err = rc.refreshFields(res, references.MatedataLabels, func(gvk resource.GVKID, path FieldPath, in interface{}) (interface{}, error) {
 			return res.GetLabels(), nil
 		})
 		if nil != err {
 			return err
 		}
 
-		err = rc.refreshFields(res, references.MatedataAnnotations, func(gvk resource.GroupVersionKind, path FieldPath, in interface{}) (interface{}, error) {
+		err = rc.refreshFields(res, references.MatedataAnnotations, func(gvk resource.GVKID, path FieldPath, in interface{}) (interface{}, error) {
 			return res.GetAnnotations(), nil
 		})
 		if nil != err {

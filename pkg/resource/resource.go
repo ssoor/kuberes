@@ -70,7 +70,7 @@ func (r *Resource) String() string {
 func (r *Resource) ID() ID {
 	gvk := r.GroupVersionKind()
 
-	return GroupVersionKind{gvk.Kind, gvk.Group, gvk.Version}
+	return GVKID{gvk.Group, gvk.Version, gvk.Kind}
 }
 
 // Header returns the header for the resource.
