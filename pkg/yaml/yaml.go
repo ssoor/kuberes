@@ -18,6 +18,12 @@ type Decoder interface {
 	Decode(into interface{}) error
 }
 
+// Marshal the object into JSON then converts JSON to YAML and returns the
+// YAML.
+func Marshal(o interface{}) ([]byte, error) {
+	return yaml2.Marshal(o)
+}
+
 // ToJSONFormBytes converts YAML to JSON. Since JSON is a subset of YAML,
 // passing JSON through this method should be a no-op.
 //
