@@ -21,9 +21,5 @@ func (i Import) Make(loader loader.Loader) (ResourceMap, error) {
 
 	t.Name = i.Name
 
-	if err := t.Make(); err != nil {
-		return nil, err
-	}
-
-	return t.ResourceMap(), nil
+	return t.Make()
 }

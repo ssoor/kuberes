@@ -7,19 +7,17 @@ import (
 )
 
 // ReferenceMap is a map from resource ID to Resource.
-type ReferenceMap map[resource.GVK]reference.Reference
+type ReferenceMap map[resource.GVK]*reference.Reference
 
 // Load is
 func (r ReferenceMap) Load(decoder yaml.Decoder) (err error) {
-	for err == nil {
-		out := reference.Reference{}
+	references, err := reference.NewReferenceFromDecoder(decoder)
+	if nil != err {
+		return err
+	}
 
-		if err = decoder.Decode(&out); nil != err {
-			continue
-		}
-
-		err = nil
-		r[out.GVK] = out
+	for _, ref := range references {
+		r[ref.GVK] = ref
 	}
 
 	return nil
@@ -32,5 +30,5 @@ func (r ReferenceMap) FindByGVK(key resource.GVK) *reference.Reference {
 		return nil // continue
 	}
 
-	return &item
+	return item
 }

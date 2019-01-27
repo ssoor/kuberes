@@ -5,7 +5,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/kubernetes-sigs/kustomize/pkg/transformers/config/defaultconfig"
 	"github.com/ssoor/kuberes/pkg/yaml"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -65,8 +64,6 @@ func NewResourceFromDecoder(decoder yaml.Decoder) ([]*Resource, error) {
 	var err error
 	var result []*Resource
 
-	defaultconfig.GetDefaultFieldSpecs()
-
 	for err == nil {
 		var out unstructured.Unstructured
 
@@ -108,7 +105,7 @@ func (r *Resource) GVK() GVK {
 
 // ID returns the ID for the resource.
 func (r *Resource) ID() UniqueID {
-	return NewUniqueID(r.GetName(), r.GetNamespace(), r.GVK())
+	return NewUniqueID(r.GetName(), r.GVK())
 }
 
 // Map returns the Map for the resource.

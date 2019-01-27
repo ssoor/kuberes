@@ -109,12 +109,13 @@ func (o *CommandOptions) Run(out io.Writer, fSys fs.FileSystem, rf *resmap.Facto
 		return err
 	}
 
-	if err := buildTarget.Make(); err != nil {
+	resourceMap, err := buildTarget.Make()
+	if err != nil {
 		return err
 	}
 
 	// Output the objects.
-	res, err := buildTarget.ResourceMap().Bytes()
+	res, err := resourceMap.Bytes()
 	if err != nil {
 		return err
 	}

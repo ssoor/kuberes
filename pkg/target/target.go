@@ -35,11 +35,6 @@ type Target struct {
 	referenceMap ReferenceMap
 }
 
-// ResourceMap is
-func (t *Target) ResourceMap() ResourceMap {
-	return t.resourceMap
-}
-
 // NewTarget is
 func NewTarget(loader loader.Loader) (*Target, error) {
 	newTarget := &Target{
@@ -80,7 +75,39 @@ func (t *Target) Load() (err error) {
 }
 
 // Make is
-func (t *Target) Make() (err error) {
+func (t *Target) Make() (ResourceMap, error) {
+	if err := t.loadImports(); nil != err {
+		return nil, err
+	}
+
+	if err := t.loadResources(); nil != err {
+		return nil, err
+	}
+
+	if err := t.Patchs.Make(t.loader, t.resourceMap); nil != err {
+		return nil, err
+	}
+
+	err := t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
+		switch name := res.GetName(); name {
+		case "":
+		case "-":
+			res.SetName(t.Name)
+		default:
+			res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
+		}
+
+		return t.Matedata.Make(res)
+	})
+
+	if nil != err {
+		return nil, err
+	}
+
+	return t.generateResourceMap()
+}
+
+func (t *Target) loadImports() error {
 	for _, depend := range t.Imports {
 		resourceMap, err := depend.Make(t.loader)
 		if nil != err {
@@ -92,6 +119,10 @@ func (t *Target) Make() (err error) {
 		}
 	}
 
+	return nil
+}
+
+func (t *Target) loadResources() error {
 	for _, path := range t.Resources {
 		decoder, err := t.loader.LoadYamlDecoder(path)
 		if nil != err {
@@ -103,60 +134,50 @@ func (t *Target) Make() (err error) {
 		}
 	}
 
-	t.Patchs.Make(t.loader, t.resourceMap)
+	return nil
+}
 
-	for key := range t.referenceMap {
-		fmt.Println(key)
-	}
+func (t *Target) generateResourceMap() (ResourceMap, error) {
+	resultMap := make(ResourceMap)
 
-	err = t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
-		switch name := res.GetName(); name {
-		case "":
-		case "-":
-			res.SetName(t.Name)
-		default:
-			res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
-		}
-
-		return t.Matedata.Make(res)
-	})
-	if nil != err {
-		return err
-	}
-
-	err = t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
+	err := t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
 		fmt.Printf("id => %v ,res.ID() => %v\n", id, res.ID())
 
-		refRule := t.referenceMap.FindByGVK(res.GVK())
-		if nil == refRule {
-			return nil // continue
+		if rule := t.referenceMap.FindByGVK(res.GVK()); nil != rule {
+			if err := rule.Refresh(res, t.refreshCallback); nil != err {
+				return err
+			}
 		}
 
-		err = refRule.RefreshMatedataName(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
-			id := resource.NewUniqueID(in.(string), res.GetNamespace(), fs.GVK)
+		resultMap[res.ID()] = res
 
-			res := t.resourceMap[id]
-
-			fmt.Println(id, fp)
-			return res.GetName(), nil
-		})
-		if nil != err {
-			return err
-		}
-
-		err = refRule.RefreshMatedataLabels(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
-			return res.GetLabels(), nil
-		})
-		if nil != err {
-			return err
-		}
-
-		err = refRule.RefreshMatedataAnnotations(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
-			return res.GetAnnotations(), nil
-		})
-
-		return err
+		return nil
 	})
 
-	return err
+	if nil != err {
+		return nil, err
+	}
+
+	return resultMap, nil
+}
+
+func (t *Target) refreshCallback(fs reference.RefreshSpec, in interface{}) (interface{}, error) {
+	switch fs.Name {
+	case "matedata.name":
+		id := resource.NewUniqueID(in.(string), fs.GVK)
+
+		res := t.resourceMap[id]
+		if nil == res {
+			panic("TODO")
+		}
+
+		fmt.Println(id, fs)
+		return res.GetName(), nil
+	case "matedata.labels":
+		return t.Matedata.Labels, nil
+	case "matedata.annotations":
+		return t.Matedata.Annotations, nil
+	}
+
+	panic("TODO")
 }

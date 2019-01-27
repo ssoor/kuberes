@@ -11,10 +11,10 @@ type FieldSpec struct {
 }
 
 // Refresh is
-func (fs FieldSpec) Refresh(body map[string]interface{}, fn func(FieldSpec, FieldPath, interface{}) (interface{}, error)) error {
+func (fs FieldSpec) Refresh(body map[string]interface{}, fn RefreshCallback) error {
 	for _, path := range fs.Paths {
 		err := path.Refresh(body, fs.Create, func(fp FieldPath, data interface{}) (interface{}, error) {
-			return fn(fs, fp, data)
+			return fn(RefreshSpec{GVK: fs.GVK, FieldPath: path}, data)
 		})
 
 		if nil != err {

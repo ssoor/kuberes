@@ -14,7 +14,7 @@ type UniqueID struct {
 }
 
 // NewUniqueID is
-func NewUniqueID(name, namespace string, gvk GVK) UniqueID {
+func NewUniqueID(name string, gvk GVK) UniqueID {
 	return UniqueID{Name: name, GVK: gvk}
 }
 

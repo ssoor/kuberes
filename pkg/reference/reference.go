@@ -1,40 +1,59 @@
 package reference
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/ssoor/kuberes/pkg/resource"
+	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
 // Reference is
 type Reference struct {
 	resource.GVK `json:",inline,omitempty" yaml:",inline,omitempty"`
 
-	MatedataName        []FieldSpec `json:"matedata.name,omitempty" yaml:"matedata.name,omitempty"`
-	MatedataLabels      []FieldSpec `json:"matedata.labels,omitempty" yaml:"matedata.labels,omitempty"`
-	MatedataAnnotations []FieldSpec `json:"metadata.annotations,omitempty" yaml:"metadata.annotations,omitempty"`
+	// MatedataName        []FieldSpec `json:"matedata.name,omitempty" yaml:"matedata.name,omitempty"`
+	// MatedataLabels      []FieldSpec `json:"matedata.labels,omitempty" yaml:"matedata.labels,omitempty"`
+	// MatedataAnnotations []FieldSpec `json:"metadata.annotations,omitempty" yaml:"metadata.annotations,omitempty"`
+
+	FieldSpecs map[string][]FieldSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
-// RefreshCallback is
-type RefreshCallback func(FieldSpec, FieldPath, interface{}) (interface{}, error)
+// NewReferenceFromDecoder is
+func NewReferenceFromDecoder(decoder yaml.Decoder) ([]*Reference, error) {
+	var err error
+	var result []*Reference
 
-// RefreshMatedataName is
-func (i Reference) RefreshMatedataName(res *resource.Resource, fn RefreshCallback) error {
-	return i.refreshFields(res, i.MatedataName, fn)
+	for err == nil {
+		out := &Reference{}
+
+		if err = decoder.Decode(out); err != nil {
+			continue
+		}
+
+		result = append(result, out)
+	}
+
+	if err != io.EOF {
+		return nil, err
+	}
+
+	return result, nil
 }
 
-// RefreshMatedataLabels is
-func (i Reference) RefreshMatedataLabels(res *resource.Resource, fn RefreshCallback) error {
-	return i.refreshFields(res, i.MatedataLabels, fn)
-}
+// Refresh is
+func (i Reference) Refresh(res *resource.Resource, fn RefreshCallback) error {
+	for name, specs := range i.FieldSpecs {
+		fmt.Println(specs)
 
-// RefreshMatedataAnnotations is
-func (i Reference) RefreshMatedataAnnotations(res *resource.Resource, fn RefreshCallback) error {
-	return i.refreshFields(res, i.MatedataAnnotations, fn)
-}
+		for _, field := range specs {
+			if err := field.Refresh(res.Map(), func(rs RefreshSpec, data interface{}) (interface{}, error) {
+				rs.Name = name
 
-func (i Reference) refreshFields(res *resource.Resource, fields []FieldSpec, fn RefreshCallback) error {
-	for _, field := range fields {
-		if err := field.Refresh(res.Map(), fn); nil != err {
-			return err
+				return fn(rs, data)
+			}); nil != err {
+				return err
+			}
 		}
 	}
 
