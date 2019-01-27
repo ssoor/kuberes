@@ -1,7 +1,6 @@
 package reference
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/ssoor/kuberes/pkg/resource"
@@ -44,11 +43,10 @@ func NewReferenceFromDecoder(decoder yaml.Decoder) ([]*Reference, error) {
 // Refresh is
 func (i Reference) Refresh(res *resource.Resource, fn RefreshCallback) error {
 	for name, specs := range i.FieldSpecs {
-		fmt.Println(specs)
-
 		for _, field := range specs {
 			if err := field.Refresh(res.Map(), func(rs RefreshSpec, data interface{}) (interface{}, error) {
 				rs.Name = name
+				rs.Resource = res
 
 				return fn(rs, data)
 			}); nil != err {

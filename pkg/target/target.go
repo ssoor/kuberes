@@ -141,10 +141,8 @@ func (t *Target) generateResourceMap() (ResourceMap, error) {
 	resultMap := make(ResourceMap)
 
 	err := t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
-		fmt.Printf("id => %v ,res.ID() => %v\n", id, res.ID())
-
 		if rule := t.referenceMap.FindByGVK(res.GVK()); nil != rule {
-			if err := rule.Refresh(res, t.refreshCallback); nil != err {
+			if err := rule.Refresh(res, t.referenceCallback); nil != err {
 				return err
 			}
 		}
@@ -161,7 +159,9 @@ func (t *Target) generateResourceMap() (ResourceMap, error) {
 	return resultMap, nil
 }
 
-func (t *Target) refreshCallback(fs reference.RefreshSpec, in interface{}) (interface{}, error) {
+func (t *Target) referenceCallback(fs reference.RefreshSpec, in interface{}) (out interface{}, err error) {
+	out = in
+
 	switch fs.Name {
 	case "matedata.name":
 		id := resource.NewUniqueID(in.(string), fs.GVK)
@@ -171,13 +171,14 @@ func (t *Target) refreshCallback(fs reference.RefreshSpec, in interface{}) (inte
 			panic("TODO")
 		}
 
-		fmt.Println(id, fs)
-		return res.GetName(), nil
+		out = res.GetName()
 	case "matedata.labels":
-		return t.Matedata.Labels, nil
+		out = t.Matedata.Labels
 	case "matedata.annotations":
-		return t.Matedata.Annotations, nil
+		out = t.Matedata.Annotations
 	}
 
-	panic("TODO")
+	fmt.Printf("[%s] %s:%s(%v) => %v\n", fs.Resource.ID(), fs.Name, fs.Path, in, out)
+
+	return out, nil
 }

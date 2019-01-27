@@ -14,7 +14,7 @@ type FieldSpec struct {
 func (fs FieldSpec) Refresh(body map[string]interface{}, fn RefreshCallback) error {
 	for _, path := range fs.Paths {
 		err := path.Refresh(body, fs.Create, func(fp FieldPath, data interface{}) (interface{}, error) {
-			return fn(RefreshSpec{GVK: fs.GVK, FieldPath: path}, data)
+			return fn(RefreshSpec{GVK: fs.GVK, Path: path}, data)
 		})
 
 		if nil != err {

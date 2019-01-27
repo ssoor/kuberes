@@ -38,5 +38,5 @@ func generationIDString(name string, gvk GVK) string {
 		name = noName
 	}
 
-	return strings.Join([]string{noName, gvk.String()}, separator)
+	return strings.Join([]string{name, gvk.String()}, separator)
 }

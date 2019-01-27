@@ -4,10 +4,11 @@ import "github.com/ssoor/kuberes/pkg/resource"
 
 // RefreshSpec is
 type RefreshSpec struct {
-	resource.GVK `json:",inline,omitempty" yaml:",inline,omitempty"`
+	resource.GVK
 
-	Name      string    `json:"name,omitempty" yaml:"name,omitempty"`
-	FieldPath FieldPath `json:"path,omitempty" yaml:"path,omitempty"`
+	Name     string
+	Path     FieldPath
+	Resource *resource.Resource
 }
 
 // RefreshCallback is
