@@ -1,5 +1,7 @@
 package target
 
+import "github.com/ssoor/kuberes/pkg/loader"
+
 // Import is
 type Import struct {
 	Name   string `json:"name,omitempty" yaml:"name,omitempty"`
@@ -7,13 +9,13 @@ type Import struct {
 }
 
 // Make is
-func (i Import) Make() (ResourceMap, error) {
-	t, err := NewTarget()
+func (i Import) Make(loader loader.Loader) (ResourceMap, error) {
+	t, err := NewTarget(loader.Sub(i.Attach))
 	if nil != err {
 		return nil, err
 	}
 
-	if err := t.Load(i.Attach); err != nil {
+	if err := t.Load(); err != nil {
 		return nil, err
 	}
 	if err := t.Make(); err != nil {

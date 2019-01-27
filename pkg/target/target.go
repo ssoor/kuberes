@@ -2,14 +2,14 @@ package target
 
 import (
 	"fmt"
-	"io/ioutil"
 
+	"github.com/ssoor/kuberes/pkg/loader"
 	"github.com/ssoor/kuberes/pkg/reference"
 	"github.com/ssoor/kuberes/pkg/resource"
-	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
 const (
+	loaderPathTarget      = "kuberes.yaml"
 	fileNameReferenceRule = "conf/reference_rule.yaml"
 )
 
@@ -28,6 +28,7 @@ type Target struct {
 	// of kubernetes API objects. URLs and globs not supported.
 	Resources []string `json:"resources,omitempty" yaml:"resources,omitempty"`
 
+	loader       loader.Loader
 	resourceMap  ResourceMap
 	referenceMap ReferenceMap
 }
@@ -38,8 +39,9 @@ func (t *Target) ResourceMap() ResourceMap {
 }
 
 // NewTarget is
-func NewTarget() (*Target, error) {
+func NewTarget(loader loader.Loader) (*Target, error) {
 	newTarget := &Target{
+		loader:       loader,
 		resourceMap:  make(ResourceMap),
 		referenceMap: make(ReferenceMap),
 	}
@@ -48,13 +50,12 @@ func NewTarget() (*Target, error) {
 }
 
 // Load is
-func (t *Target) Load(path string) (err error) {
-	body, err := ioutil.ReadFile(path)
+func (t *Target) Load() (err error) {
+	decoder, err := t.loader.LoadYamlDecoder(loaderPathTarget)
 	if nil != err {
 		return err
 	}
 
-	decoder := yaml.NewFormatErrorDecodeFromBytes(body, path)
 	if err := decoder.Decode(t); nil != err {
 		return err
 	}
@@ -73,7 +74,7 @@ func (t *Target) Make() (err error) {
 	}
 
 	for _, depend := range t.Imports {
-		resourceMap, err := depend.Make()
+		resourceMap, err := depend.Make(t.loader)
 		if nil != err {
 			return err
 		}
