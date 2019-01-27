@@ -66,11 +66,16 @@ func (r *Resource) String() string {
 	return r.b.String() + ":" + strings.TrimSpace(string(bs))
 }
 
-// ID returns the ID for the resource.
-func (r *Resource) ID() ID {
+// GVKID returns the GVKID for the resource.
+func (r *Resource) GVKID() GVKID {
 	gvk := r.GroupVersionKind()
 
 	return GVKID{gvk.Group, gvk.Version, gvk.Kind}
+}
+
+// ID returns the ID for the resource.
+func (r *Resource) ID() UniqueID {
+	return NewUniqueID(r.GetName(), r.GetNamespace(), r.GVKID())
 }
 
 // Map returns the Map for the resource.

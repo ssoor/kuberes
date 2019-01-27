@@ -4,47 +4,48 @@ import (
 	"strings"
 )
 
-// ID conflates GroupVersionKind with a textual name to uniquely identify a kubernetes resource (object).
-type ID interface {
-	String() string
-	Equals(ID) bool
-}
-
-// GVKID unambiguously identifies a kind.  It doesn't anonymously include GroupVersion
+// UniqueID unambiguously identifies a kind.  It doesn't anonymously include GroupVersion
 // to avoid automatic coercion.  It doesn't use a GroupVersion to avoid custom marshalling
-type GVKID struct {
-	Group   string `json:"group,omitempty" yaml:"group,omitempty"`
-	Version string `json:"version,omitempty" yaml:"version,omitempty"`
-	Kind    string `json:"kind,omitempty" yaml:"kind,omitempty"`
+type UniqueID struct {
+	GVKID
+
+	// original name of the resource before transformation.
+	Name string
+	// namespace the resource belongs to
+	// an untransformed resource has no namespace, fully transformed resource has the namespace from
+	// the top most overlay
+	Namespace string
 }
 
-func (fs GVKID) String() string {
-	return generationIDString(fs.Group, fs.Version, fs.Kind)
+// NewUniqueID is
+func NewUniqueID(name, namespace string, gvk GVKID) UniqueID {
+	return UniqueID{Name: name, Namespace: namespace, GVKID: gvk}
+}
+
+func (uid UniqueID) String() string {
+	return generationIDString(uid.Name, uid.Namespace, uid.GVKID)
 }
 
 // Equals returns true if the Gvk's have equal fields.
-func (fs GVKID) Equals(o ID) bool {
-	return fs.String() == o.String()
+func (uid UniqueID) Equals(o UniqueID) bool {
+	return uid.String() == o.String()
 }
 
-func generationIDString(group, version, kind string) string {
+func generationIDString(name, namespace string, gvk GVKID) string {
 	// Values that are brief but meaningful in logs.
 	const (
-		noGroup   = "~G"
-		noVersion = "~V"
-		noKind    = "~K"
-		separator = "_"
+		noName      = "~N"
+		noNamespace = "~NS"
+		separator   = "_"
 	)
 
-	if group == "" {
-		group = noGroup
-	}
-	if version == "" {
-		version = noVersion
-	}
-	if kind == "" {
-		kind = noKind
+	if name == "" {
+		name = noName
 	}
 
-	return strings.Join([]string{group, version, kind}, separator)
+	if namespace == "" {
+		namespace = noNamespace
+	}
+
+	return strings.Join([]string{noName, noNamespace, gvk.String()}, separator)
 }
