@@ -2,15 +2,17 @@ package target
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	"github.com/ssoor/kuberes/pkg/loader"
 	"github.com/ssoor/kuberes/pkg/reference"
 	"github.com/ssoor/kuberes/pkg/resource"
+	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
 const (
 	loaderPathTarget        = "kuberes.yaml"
-	configPathReferenceRule = "reference.yaml"
+	configPathReferenceRule = ".kuberes/reference.yaml"
 )
 
 // Target is
@@ -60,7 +62,17 @@ func (t *Target) Load() (err error) {
 		return err
 	}
 
-	if t.referenceMap.Load(configPathReferenceRule); nil != err {
+	decoder, err = t.loader.LoadYamlDecoder(configPathReferenceRule)
+	if nil != err {
+		body, err := ioutil.ReadFile(configPathReferenceRule)
+		if nil != err {
+			return err
+		}
+
+		decoder = yaml.NewFormatErrorDecodeFromBytes(body, configPathReferenceRule)
+	}
+
+	if err := t.referenceMap.Load(decoder); nil != err {
 		return err
 	}
 

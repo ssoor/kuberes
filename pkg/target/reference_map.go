@@ -1,8 +1,6 @@
 package target
 
 import (
-	"io/ioutil"
-
 	"github.com/ssoor/kuberes/pkg/reference"
 	"github.com/ssoor/kuberes/pkg/resource"
 	"github.com/ssoor/kuberes/pkg/yaml"
@@ -12,14 +10,7 @@ import (
 type ReferenceMap map[resource.GVK]reference.Reference
 
 // Load is
-func (r ReferenceMap) Load(path string) error {
-	body, err := ioutil.ReadFile(path)
-	if nil != err {
-		return err
-	}
-
-	decoder := yaml.NewFormatErrorDecodeFromBytes(body, path)
-
+func (r ReferenceMap) Load(decoder yaml.Decoder) (err error) {
 	for err == nil {
 		out := reference.Reference{}
 
