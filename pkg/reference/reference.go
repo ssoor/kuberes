@@ -1,13 +1,12 @@
 package reference
 
 import (
-	"github.com/ssoor/kuberes/pkg/gvk"
 	"github.com/ssoor/kuberes/pkg/resource"
 )
 
 // Reference is
 type Reference struct {
-	gvk.GVK `json:",inline,omitempty" yaml:",inline,omitempty"`
+	resource.GVK `json:",inline,omitempty" yaml:",inline,omitempty"`
 
 	MatedataName        []FieldSpec `json:"matedata.name,omitempty" yaml:"matedata.name,omitempty"`
 	MatedataLabels      []FieldSpec `json:"matedata.labels,omitempty" yaml:"matedata.labels,omitempty"`

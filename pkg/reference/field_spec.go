@@ -1,10 +1,10 @@
 package reference
 
-import "github.com/ssoor/kuberes/pkg/gvk"
+import "github.com/ssoor/kuberes/pkg/resource"
 
 // FieldSpec is
 type FieldSpec struct {
-	gvk.GVK `json:",inline,omitempty" yaml:",inline,omitempty"`
+	resource.GVK `json:",inline,omitempty" yaml:",inline,omitempty"`
 
 	Create bool        `json:"create,omitempty" yaml:"create,omitempty"`
 	Paths  []FieldPath `json:"paths,omitempty" yaml:"paths,omitempty"`

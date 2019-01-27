@@ -3,7 +3,6 @@ package target
 import (
 	"fmt"
 
-	"github.com/ssoor/kuberes/pkg/gvk"
 	"github.com/ssoor/kuberes/pkg/loader"
 	"github.com/ssoor/kuberes/pkg/merge"
 	"github.com/ssoor/kuberes/pkg/resource"
@@ -101,7 +100,7 @@ func (p Patchs) resourceMerge(uniqueID resource.UniqueID, merger merge.Merger, r
 }
 
 // toSchemaGvk converts to a schema.GroupVersionKind.
-func (p Patchs) toSchemaGvk(x gvk.GVK) schema.GroupVersionKind {
+func (p Patchs) toSchemaGvk(x resource.GVK) schema.GroupVersionKind {
 	return schema.GroupVersionKind{
 		Group:   x.Group,
 		Version: x.Version,

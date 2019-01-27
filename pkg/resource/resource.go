@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/kustomize/pkg/transformers/config/defaultconfig"
-	"github.com/ssoor/kuberes/pkg/gvk"
 	"github.com/ssoor/kuberes/pkg/yaml"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -101,10 +100,10 @@ func (r *Resource) String() string {
 }
 
 // GVK returns the GVK for the resource.
-func (r *Resource) GVK() gvk.GVK {
+func (r *Resource) GVK() GVK {
 	rgvk := r.GroupVersionKind()
 
-	return gvk.GVK{Group: rgvk.Group, Version: rgvk.Version, Kind: rgvk.Kind}
+	return GVK{Group: rgvk.Group, Version: rgvk.Version, Kind: rgvk.Kind}
 }
 
 // ID returns the ID for the resource.

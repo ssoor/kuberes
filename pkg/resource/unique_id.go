@@ -2,14 +2,12 @@ package resource
 
 import (
 	"strings"
-
-	"github.com/ssoor/kuberes/pkg/gvk"
 )
 
 // UniqueID unambiguously identifies a kind.  It doesn't anonymously include GroupVersion
 // to avoid automatic coercion.  It doesn't use a GroupVersion to avoid custom marshalling
 type UniqueID struct {
-	gvk.GVK
+	GVK
 
 	// original name of the resource before transformation.
 	Name string
@@ -20,7 +18,7 @@ type UniqueID struct {
 }
 
 // NewUniqueID is
-func NewUniqueID(name, namespace string, gvk gvk.GVK) UniqueID {
+func NewUniqueID(name, namespace string, gvk GVK) UniqueID {
 	return UniqueID{Name: name, Namespace: namespace, GVK: gvk}
 }
 
@@ -33,7 +31,7 @@ func (uid UniqueID) Equals(o UniqueID) bool {
 	return uid.String() == o.String()
 }
 
-func generationIDString(name, namespace string, gvk gvk.GVK) string {
+func generationIDString(name, namespace string, gvk GVK) string {
 	// Values that are brief but meaningful in logs.
 	const (
 		noName      = "~N"
