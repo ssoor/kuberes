@@ -35,3 +35,8 @@ func (l fileLoader) LoadYamlDecoder(path string) (yaml.Decoder, error) {
 
 	return yaml.NewFormatErrorDecodeFromBytes(body, path), nil
 }
+
+// Close cleans the loader
+func (l fileLoader) Close() error {
+	return l.Loader.Cleanup()
+}

@@ -17,8 +17,8 @@ type Loader interface {
 	LoadBytes(path string) ([]byte, error)
 	// LoadYamlDecoder returns the yaml.Decoder read from the location or an error.
 	LoadYamlDecoder(path string) (yaml.Decoder, error)
-	// Cleanup cleans the loader
-	Cleanup() error
+	// Close cleans the loader
+	Close() error
 }
 
 // NewLoader returns a Loader.
