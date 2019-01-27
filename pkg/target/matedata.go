@@ -13,13 +13,14 @@ type Matedata struct {
 // Make is
 func (m Matedata) Make(res *resource.Resource) error {
 	res.SetNamespace(m.Namespace)
-	res.SetLabels(m.mergeMap(res.GetLabels(), m.Labels))
-	res.SetAnnotations(m.mergeMap(res.GetAnnotations(), m.Annotations))
+	res.SetLabels(m.MergeMap(res.GetLabels(), m.Labels))
+	res.SetAnnotations(m.MergeMap(res.GetAnnotations(), m.Annotations))
 
 	return nil
 }
 
-func (m Matedata) mergeMap(src map[string]string, merge map[string]string) map[string]string {
+// MergeMap is
+func (m Matedata) MergeMap(src map[string]string, merge map[string]string) map[string]string {
 	if nil == merge {
 		return src
 	}

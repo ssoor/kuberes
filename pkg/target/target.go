@@ -173,9 +173,23 @@ func (t *Target) referenceCallback(fs reference.RefreshSpec, in interface{}) (ou
 
 		out = res.GetName()
 	case "matedata.labels":
-		out = t.Matedata.Labels
+		var val map[string]string
+
+		switch inVal := in.(type) {
+		case map[string]string:
+			val = inVal
+		}
+
+		out = t.Matedata.MergeMap(val, t.Matedata.Labels)
 	case "matedata.annotations":
-		out = t.Matedata.Annotations
+		var val map[string]string
+
+		switch inVal := in.(type) {
+		case map[string]string:
+			val = inVal
+		}
+
+		out = t.Matedata.MergeMap(val, t.Matedata.Annotations)
 	}
 
 	fmt.Printf("[%s] %s:%s(%v) => %v\n", fs.Resource.ID(), fs.Name, fs.Path, in, out)
