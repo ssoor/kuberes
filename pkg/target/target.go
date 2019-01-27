@@ -10,16 +10,29 @@ import (
 	"sigs.k8s.io/kustomize/pkg/ifc"
 	"sigs.k8s.io/kustomize/pkg/types"
 
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
 	"github.com/ssoor/kuberes/pkg/log"
+	"github.com/ssoor/kuberes/pkg/reference"
+	"github.com/ssoor/kuberes/pkg/resource"
+	"github.com/ssoor/kuberes/pkg/yaml"
+)
+
+const (
+	fileNameReferenceRule = "conf/reference_rule.yaml"
 )
 
 // Target is
 type Target struct {
 	ldr           ifc.Loader
+	rules         ReferenceRuleMap
+	resources     *ResourceController
 	kustomization *types.Kustomization
+}
+
+// Resources is
+func (t *Target) Resources() *ResourceController {
+	return t.resources
 }
 
 // NewTarget is
@@ -43,7 +56,17 @@ func NewTarget(ldr ifc.Loader) (*Target, error) {
 		log.Printf(strings.Join(msgs, "\n"))
 	}
 
-	return &Target{ldr: ldr, kustomization: &k}, nil
+	newTarget := &Target{
+		ldr:           ldr,
+		kustomization: &k,
+	}
+
+	newTarget.rules, err = LoadReferenceRuleMapFormFile(fileNameReferenceRule)
+	if nil != err {
+		return nil, err
+	}
+
+	return newTarget, nil
 }
 
 func loadKustFile(ldr ifc.Loader) ([]byte, error) {
@@ -62,7 +85,7 @@ func loadKustFile(ldr ifc.Loader) ([]byte, error) {
 }
 
 func unmarshal(y []byte, o interface{}) error {
-	j, err := yaml.YAMLToJSON(y)
+	j, err := yaml.ToJSONFormBytes(y)
 	if err != nil {
 		return err
 	}
@@ -71,53 +94,82 @@ func unmarshal(y []byte, o interface{}) error {
 	return dec.Decode(o)
 }
 
-// YamlFormatError represents error with yaml file name where json/yaml format error happens.
-type YamlFormatError struct {
-	Path     string
-	ErrorMsg string
-}
-
-func (e YamlFormatError) Error() string {
-	return fmt.Sprintf("YAML file [%s] encounters a format error.\n%s\n", e.Path, e.ErrorMsg)
-}
-
-func isYAMLSyntaxError(e error) bool {
-	return strings.Contains(e.Error(), "error converting YAML to JSON") || strings.Contains(e.Error(), "error unmarshaling JSON")
-}
-
-// ErrorHandler handles YamlFormatError
-func ErrorHandler(e error, path string) error {
-	if isYAMLSyntaxError(e) {
-		return YamlFormatError{
-			Path:     path,
-			ErrorMsg: e.Error(),
-		}
-	}
-	return e
-}
-
-// LoadResources is
-func (t *Target) LoadResources() (*ResourceController, error) {
-	controller, err := NewResourceController()
-	if nil != err {
-		return nil, err
+// Load is
+func (t *Target) Load() (err error) {
+	if t.resources, err = NewResourceController(); nil != err {
+		return err
 	}
 
 	for _, path := range t.kustomization.Resources {
 		content, err := t.ldr.Load(path)
 		if err != nil {
-			return nil, errors.Wrap(err, "Load from path "+path+" failed")
+			return errors.Wrap(err, "Load from path "+path+" failed")
 		}
 
-		res, err := controller.LoadResourcesFormBytes(content)
+		res, err := t.resources.LoadResourcesFormBytes(yaml.NewFormatErrorDecodeFormBytes(content, path))
 		if err != nil {
-			return nil, ErrorHandler(err, path)
+			return err
 		}
 
-		if err := controller.MergeResources(false, res...); nil != err {
-			return nil, err
+		if err := t.resources.MergeResources(false, res...); nil != err {
+			return err
 		}
 	}
 
-	return controller, nil
+	return nil
+}
+
+// RefreshReferences is
+func (t *Target) RefreshReferences() (err error) {
+	for key := range t.rules {
+		fmt.Println(key)
+	}
+
+	t.resources.Range(func(id resource.UniqueID, res *resource.Resource) error {
+		fmt.Printf("id => %v ,res.ID() => %v\n", id, res.ID())
+
+		references, exists := t.rules[res.GVKID()]
+		if !exists {
+			return nil // continue
+		}
+
+		err = t.refreshFields(res, references.MatedataName, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
+			id := resource.NewUniqueID(res.GetName(), res.GetNamespace(), fs.GVKID)
+			res := t.resources.Find(id)
+
+			fmt.Println(id, fp, res.GetName())
+			return res.GetName(), nil
+		})
+		if nil != err {
+			return err
+		}
+
+		err = t.refreshFields(res, references.MatedataLabels, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
+			return res.GetLabels(), nil
+		})
+		if nil != err {
+			return err
+		}
+
+		err = t.refreshFields(res, references.MatedataAnnotations, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
+			return res.GetAnnotations(), nil
+		})
+		if nil != err {
+			return err
+		}
+
+		return nil
+	})
+
+	return nil
+}
+
+func (t Target) refreshFields(res *resource.Resource, fields []reference.FieldSpec, fn func(reference.FieldSpec, reference.FieldPath, interface{}) (interface{}, error)) error {
+	for _, field := range fields {
+		if err := field.Refresh(res, fn); nil != err {
+			return err
+		}
+	}
+
+	return nil
 }

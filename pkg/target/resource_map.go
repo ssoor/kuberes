@@ -8,11 +8,11 @@ import (
 )
 
 // ResourceMap is a map from resource ID to Resource.
-type ResourceMap map[resource.ID]*resource.Resource
+type ResourceMap map[resource.UniqueID]*resource.Resource
 
 // Yaml encodes a ResMap to YAML; encoded objects separated by `---`.
 func (rm ResourceMap) Yaml() ([]byte, error) {
-	var ids []resource.ID
+	var ids []resource.UniqueID
 	for id := range rm {
 		ids = append(ids, id)
 	}

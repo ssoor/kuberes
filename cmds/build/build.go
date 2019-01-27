@@ -2,6 +2,8 @@ package build
 
 import (
 	"errors"
+	"fmt"
+	"hash/crc32"
 	"io"
 
 	"sigs.k8s.io/kustomize/pkg/loader"
@@ -16,6 +18,7 @@ import (
 	"sigs.k8s.io/kustomize/pkg/ifc/transformer"
 	"sigs.k8s.io/kustomize/pkg/resmap"
 
+	"github.com/ssoor/kuberes/pkg/resource"
 	"github.com/ssoor/kuberes/pkg/target"
 )
 
@@ -111,19 +114,35 @@ func (o *CommandOptions) Run(out io.Writer, fSys fs.FileSystem, rf *resmap.Facto
 		return err
 	}
 
-	control, err := buildTarget.LoadResources()
-	if err != nil {
+	if err := buildTarget.Load(); err != nil {
 		return err
 	}
 
-	control.RefreshReferences()
+	resources := buildTarget.Resources()
+
+	resources.Range(func(id resource.UniqueID, res *resource.Resource) error {
+		name := "name"
+		matedata := res.Matedata()
+
+		matedata.SetName(fmt.Sprintf("%s-%s-%x", name, matedata.GetName(), crc32.ChecksumIEEE([]byte(name))))
+		matedata.SetNamespace("test_namespace")
+		return nil
+	})
+
+	buildTarget.RefreshReferences()
+
+	// Output the objects.
+	res, err := resources.Map().Yaml()
+	if err != nil {
+		return err
+	}
 
 	allResources, err := kt.MakeCustomizedResMap()
 	if err != nil {
 		return err
 	}
 	// Output the objects.
-	res, err := allResources.EncodeAsYaml()
+	_, err = allResources.EncodeAsYaml()
 	if err != nil {
 		return err
 	}
