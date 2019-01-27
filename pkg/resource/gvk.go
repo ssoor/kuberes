@@ -24,9 +24,9 @@ func (fs GVK) Equals(o GVK) bool {
 func generationGVKIDString(group, version, kind string) string {
 	// Values that are brief but meaningful in logs.
 	const (
-		noGroup   = "~G"
-		noVersion = "~V"
-		noKind    = "~K"
+		noGroup   = "{}"
+		noVersion = "{}"
+		noKind    = "{}"
 		separator = "_"
 	)
 

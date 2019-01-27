@@ -30,8 +30,8 @@ func (uid UniqueID) Equals(o UniqueID) bool {
 func generationIDString(name string, gvk GVK) string {
 	// Values that are brief but meaningful in logs.
 	const (
-		noName    = "~N"
-		separator = "_"
+		noName    = "{}"
+		separator = " "
 	)
 
 	if name == "" {
