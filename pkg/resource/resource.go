@@ -2,9 +2,12 @@ package resource
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/kubernetes-sigs/kustomize/pkg/transformers/config/defaultconfig"
 	"github.com/ssoor/kuberes/pkg/gvk"
+	"github.com/ssoor/kuberes/pkg/yaml"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -58,6 +61,36 @@ type Resource struct {
 	b GenerationBehavior
 }
 
+// NewResourceFromDecoder is
+func NewResourceFromDecoder(decoder yaml.Decoder) ([]*Resource, error) {
+	var err error
+	var result []*Resource
+
+	defaultconfig.GetDefaultFieldSpecs()
+
+	for err == nil {
+		var out unstructured.Unstructured
+
+		if err = decoder.Decode(&out); err != nil {
+			continue
+		}
+
+		res := &Resource{Unstructured: out}
+
+		if err := res.Validate(); err != nil {
+			return nil, err
+		}
+
+		result = append(result, res)
+	}
+
+	if err != io.EOF {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // String returns resource as JSON.
 func (r *Resource) String() string {
 	bs, err := r.MarshalJSON()
@@ -67,8 +100,8 @@ func (r *Resource) String() string {
 	return r.b.String() + ":" + strings.TrimSpace(string(bs))
 }
 
-// GVKID returns the GVKID for the resource.
-func (r *Resource) GVKID() gvk.GVK {
+// GVK returns the GVK for the resource.
+func (r *Resource) GVK() gvk.GVK {
 	rgvk := r.GroupVersionKind()
 
 	return gvk.GVK{Group: rgvk.Group, Version: rgvk.Version, Kind: rgvk.Kind}
@@ -76,7 +109,7 @@ func (r *Resource) GVKID() gvk.GVK {
 
 // ID returns the ID for the resource.
 func (r *Resource) ID() UniqueID {
-	return NewUniqueID(r.GetName(), r.GetNamespace(), r.GVKID())
+	return NewUniqueID(r.GetName(), r.GetNamespace(), r.GVK())
 }
 
 // Map returns the Map for the resource.
@@ -84,25 +117,9 @@ func (r *Resource) Map() map[string]interface{} {
 	return r.Object
 }
 
-// Header returns the header for the resource.
-func (r *Resource) Header() Header {
-	return r
-}
-
-// Matedata returns the matedata for the resource.
-func (r *Resource) Matedata() Matedata {
-	return r
-}
-
-// Behavior returns the behavior for the resource.
-func (r *Resource) Behavior() GenerationBehavior {
-	return r.b
-}
-
-// SetBehavior changes the resource to the new behavior
-func (r *Resource) SetBehavior(b GenerationBehavior) *Resource {
-	r.b = b
-	return r
+// SetMap overrides the unstructured content map.
+func (r *Resource) SetMap(m map[string]interface{}) {
+	r.Object = m
 }
 
 // Validate validates that u has kind and name
