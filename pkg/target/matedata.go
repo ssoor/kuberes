@@ -10,9 +10,27 @@ type Matedata struct {
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 }
 
-// MakeResource is
-func (m Matedata) MakeResource(res *resource.Resource) {
+// Make is
+func (m Matedata) Make(res *resource.Resource) error {
 	res.SetNamespace(m.Namespace)
-	res.SetLabels(m.Labels)
-	res.SetAnnotations(m.Annotations)
+	res.SetLabels(m.mergeMap(res.GetLabels(), m.Labels))
+	res.SetAnnotations(m.mergeMap(res.GetAnnotations(), m.Annotations))
+
+	return nil
+}
+
+func (m Matedata) mergeMap(src map[string]string, merge map[string]string) map[string]string {
+	if nil == merge {
+		return src
+	}
+
+	if nil == src {
+		return merge
+	}
+
+	for key, val := range merge {
+		src[key] = val
+	}
+
+	return src
 }
