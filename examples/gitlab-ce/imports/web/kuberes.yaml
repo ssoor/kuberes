@@ -1,0 +1,11 @@
+kind: Target
+apiVersion: v1
+name: web
+matedata:
+  namespace: web
+  labels:
+    kuberes.web.resource: web
+  annotations:
+    kuberes.web.annotations: web
+resources:
+  - service.yaml

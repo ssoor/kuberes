@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "config"
+data:
+  gitlab.rb: |
+    ## GitLab configuration settings
+    ##! https://gitlab.com/gitlab-org/omnibus-gitlab/raw/master/files/gitlab-config-template/gitlab.rb.template
+
+    external_url 'https://git.huoys.com'
+
+    gitlab_rails['rack_attack_git_basic_auth'] = {
+      'enabled' => false,
+      'ip_whitelist' => ["127.0.0.1"],
+      'maxretry' => 10,
+      'findtime' => 60,
+      'bantime' => 3600
+    }
+
+    registry['enable'] = true
+    registry['storage'] = {
+      's3' => {
+        'accesskey' => '123456',
+        'secretkey' => '123456789',
+        'bucket' => 'gitlab-registry-bucket',
+        'regionendpoint' => 'http://'
+      }
+    }
+    registry_external_url 'https://git.huoys.com:9999'
+
+    

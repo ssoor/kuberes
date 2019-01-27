@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "gitlab-ce"
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: "gitlab-ce"
+        image: "twang2218/gitlab-ce-zh:11.1"
+        ports:
+          - name: ssh
+            containerPort: 22
+          - name: http
+            containerPort: 80
+          - name: https
+            containerPort: 443
+        volumeMounts:
+          - name: logs
+            mountPath: /var/log/gitlab
+          - name: data
+            mountPath: /var/opt/gitlab
+          - name: config
+            mountPath: /etc/gitlab
+          - name: docker-env
+            mountPath: /.dockerenv
+        livenessProbe:
+          httpGet:
+            scheme: HTTPS
+            path: /
+            port: 443
+          timeoutSeconds: 3
+          initialDelaySeconds: 600
+      volumes:
+      - name: logs
+        emptyDir:
+          medium: "Memory"
+      - name: data
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: "config"
+      - name: docker-env
+        emptyDir: {}
