@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	loaderPathTarget      = "kuberes.yaml"
-	fileNameReferenceRule = "conf/reference_rule.yaml"
+	loaderPathTarget        = "kuberes.yaml"
+	configPathReferenceRule = "reference.yaml"
 )
 
 // Target is
@@ -60,7 +60,7 @@ func (t *Target) Load() (err error) {
 		return err
 	}
 
-	if t.referenceMap.Load(fileNameReferenceRule); nil != err {
+	if t.referenceMap.Load(configPathReferenceRule); nil != err {
 		return err
 	}
 
