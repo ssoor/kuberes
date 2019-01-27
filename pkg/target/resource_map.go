@@ -3,13 +3,9 @@ package target
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
 
-	"github.com/kubernetes-sigs/kustomize/pkg/transformers/config/defaultconfig"
 	"github.com/ssoor/kuberes/pkg/resource"
 	"github.com/ssoor/kuberes/pkg/yaml"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // ResourceMap is a map from resource ID to Resource.
@@ -95,14 +91,9 @@ func (rm ResourceMap) MergeFormResource(override bool, resources ...*resource.Re
 	return nil
 }
 
-// MergeFormPath is
-func (rm ResourceMap) MergeFormPath(override bool, path string) error {
-	body, err := ioutil.ReadFile(path)
-	if nil != err {
-		return err
-	}
-
-	resources, err := rm.loadResources(yaml.NewFormatErrorDecodeFromBytes(body, path))
+// MergeFormDecoder is
+func (rm ResourceMap) MergeFormDecoder(override bool, decoder yaml.Decoder) error {
+	resources, err := resource.NewResourceFromDecoder(decoder)
 	if nil != err {
 		return err
 	}
@@ -112,33 +103,4 @@ func (rm ResourceMap) MergeFormPath(override bool, path string) error {
 	}
 
 	return nil
-}
-
-func (rm ResourceMap) loadResources(decoder yaml.Decoder) ([]*resource.Resource, error) {
-	var err error
-	var result []*resource.Resource
-
-	defaultconfig.GetDefaultFieldSpecs()
-
-	for err == nil {
-		var out unstructured.Unstructured
-
-		if err = decoder.Decode(&out); err != nil {
-			continue
-		}
-
-		res := &resource.Resource{Unstructured: out}
-
-		if err := res.Validate(); err != nil {
-			return nil, err
-		}
-
-		result = append(result, res)
-	}
-
-	if err != io.EOF {
-		return nil, err
-	}
-
-	return result, nil
 }

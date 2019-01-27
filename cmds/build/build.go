@@ -2,12 +2,7 @@ package build
 
 import (
 	"errors"
-	"fmt"
-	"hash/crc32"
 	"io"
-
-	"sigs.k8s.io/kustomize/pkg/loader"
-	kus_target "sigs.k8s.io/kustomize/pkg/target"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -18,7 +13,7 @@ import (
 	"sigs.k8s.io/kustomize/pkg/ifc/transformer"
 	"sigs.k8s.io/kustomize/pkg/resmap"
 
-	"github.com/ssoor/kuberes/pkg/resource"
+	"github.com/ssoor/kuberes/pkg/loader"
 	"github.com/ssoor/kuberes/pkg/target"
 )
 
@@ -103,11 +98,7 @@ func (o *CommandOptions) Run(out io.Writer, fSys fs.FileSystem, rf *resmap.Facto
 	if err != nil {
 		return err
 	}
-	defer ldr.Cleanup()
-	kt, err := kus_target.NewKustTarget(ldr, fSys, rf, ptf)
-	if err != nil {
-		return err
-	}
+	defer ldr.Close()
 
 	buildTarget, err := target.NewTarget(ldr)
 	if err != nil {
@@ -118,34 +109,16 @@ func (o *CommandOptions) Run(out io.Writer, fSys fs.FileSystem, rf *resmap.Facto
 		return err
 	}
 
-	resources := buildTarget.Resources()
-
-	resources.Range(func(id resource.UniqueID, res *resource.Resource) error {
-		name := "name"
-		matedata := res.Matedata()
-
-		matedata.SetName(fmt.Sprintf("%s-%s-%x", name, matedata.GetName(), crc32.ChecksumIEEE([]byte(name))))
-		matedata.SetNamespace("test_namespace")
-		return nil
-	})
-
-	buildTarget.RefreshReferences()
+	if err := buildTarget.Make(); err != nil {
+		return err
+	}
 
 	// Output the objects.
-	res, err := resources.Map().Yaml()
+	res, err := buildTarget.ResourceMap().Bytes()
 	if err != nil {
 		return err
 	}
 
-	allResources, err := kt.MakeCustomizedResMap()
-	if err != nil {
-		return err
-	}
-	// Output the objects.
-	_, err = allResources.EncodeAsYaml()
-	if err != nil {
-		return err
-	}
 	if o.outputPath != "" {
 		return fSys.WriteFile(o.outputPath, res)
 	}

@@ -85,20 +85,30 @@ func (t *Target) Make() (err error) {
 	}
 
 	for _, path := range t.Resources {
-		if err := t.resourceMap.MergeFormPath(false, path); nil != err {
+		decoder, err := t.loader.LoadYamlDecoder(path)
+		if nil != err {
+			return err
+		}
+
+		if err := t.resourceMap.MergeFormDecoder(false, decoder); nil != err {
 			return err
 		}
 	}
 
+	t.Patchs.Make(t.loader, t.resourceMap)
+
 	t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
 		fmt.Printf("id => %v ,res.ID() => %v\n", id, res.ID())
 
-		res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
+		if "-" == res.GetName() {
+			res.SetName(t.Name)
+		} else {
+			res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
+		}
 
-		t.Patchs.MakeResource(res)
-		t.Matedata.MakeResource(res)
+		t.Matedata.Make(res)
 
-		refRule := t.referenceMap.FindByGVK(res.GVKID())
+		refRule := t.referenceMap.FindByGVK(res.GVK())
 		if nil == refRule {
 			return nil // continue
 		}
