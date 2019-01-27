@@ -98,9 +98,11 @@ func (t *Target) Make() (err error) {
 	}
 
 	err = t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
-		if "-" == res.GetName() {
+		switch name := res.GetName(); name {
+		case "":
+		case "-":
 			res.SetName(t.Name)
-		} else {
+		default:
 			res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
 		}
 
