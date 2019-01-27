@@ -21,12 +21,12 @@ func (d *formatErrorDecode) Decode(into interface{}) error {
 	return nil
 }
 
-// NewFormatErrorDecode is
-func NewFormatErrorDecode(de Decoder, path string) Decoder {
+// NewFromatErrorDecode is
+func NewFromatErrorDecode(de Decoder, path string) Decoder {
 	return &formatErrorDecode{de: de, path: path}
 }
 
-// NewFormatErrorDecodeFormBytes is
-func NewFormatErrorDecodeFormBytes(body []byte, path string) Decoder {
-	return &formatErrorDecode{de: NewYAMLOrJSONDecoderFormBytes(body), path: path}
+// NewFormatErrorDecodeFromBytes is
+func NewFormatErrorDecodeFromBytes(body []byte, path string) Decoder {
+	return &formatErrorDecode{de: NewYAMLOrJSONDecoderFromBytes(body), path: path}
 }

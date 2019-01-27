@@ -24,7 +24,7 @@ func Marshal(o interface{}) ([]byte, error) {
 	return yaml2.Marshal(o)
 }
 
-// ToJSONFormBytes converts YAML to JSON. Since JSON is a subset of YAML,
+// ToJSONFromBytes converts YAML to JSON. Since JSON is a subset of YAML,
 // passing JSON through this method should be a no-op.
 //
 // Things YAML can do that are not supported by JSON:
@@ -36,15 +36,15 @@ func Marshal(o interface{}) ([]byte, error) {
 //   encoded data makes it all the way through to the JSON.
 //
 // For strict decoding of YAML, use YAMLToJSONStrict.
-func ToJSONFormBytes(y []byte) ([]byte, error) {
+func ToJSONFromBytes(y []byte) ([]byte, error) {
 	return yaml2.YAMLToJSON(y)
 }
 
-// NewYAMLOrJSONDecoderFormBytes returns a decoder that will process YAML documents
+// NewYAMLOrJSONDecoderFromBytes returns a decoder that will process YAML documents
 // or JSON documents from the given reader as a stream. bufferSize determines
 // how far into the stream the decoder will look to figure out whether this
 // is a JSON stream (has whitespace followed by an open brace).
-func NewYAMLOrJSONDecoderFormBytes(body []byte) Decoder {
+func NewYAMLOrJSONDecoderFromBytes(body []byte) Decoder {
 	return yaml.NewYAMLOrJSONDecoder(bytes.NewReader(body), defaultBufferSize)
 }
 
