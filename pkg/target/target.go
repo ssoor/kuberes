@@ -69,10 +69,6 @@ func (t *Target) Load() (err error) {
 
 // Make is
 func (t *Target) Make() (err error) {
-	for key := range t.referenceMap {
-		fmt.Println(key)
-	}
-
 	for _, depend := range t.Imports {
 		resourceMap, err := depend.Make(t.loader)
 		if nil != err {
@@ -97,16 +93,25 @@ func (t *Target) Make() (err error) {
 
 	t.Patchs.Make(t.loader, t.resourceMap)
 
-	t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
-		fmt.Printf("id => %v ,res.ID() => %v\n", id, res.ID())
+	for key := range t.referenceMap {
+		fmt.Println(key)
+	}
 
+	err = t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
 		if "-" == res.GetName() {
 			res.SetName(t.Name)
 		} else {
 			res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
 		}
 
-		t.Matedata.Make(res)
+		return t.Matedata.Make(res)
+	})
+	if nil != err {
+		return err
+	}
+
+	err = t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
+		fmt.Printf("id => %v ,res.ID() => %v\n", id, res.ID())
 
 		refRule := t.referenceMap.FindByGVK(res.GVK())
 		if nil == refRule {
@@ -114,10 +119,11 @@ func (t *Target) Make() (err error) {
 		}
 
 		err = refRule.RefreshMatedataName(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
-			id := resource.NewUniqueID(res.GetName(), res.GetNamespace(), fs.GVK)
+			id := resource.NewUniqueID(in.(string), res.GetNamespace(), fs.GVK)
+
 			res := t.resourceMap[id]
 
-			fmt.Println(id, fp, res.GetName())
+			fmt.Println(id, fp)
 			return res.GetName(), nil
 		})
 		if nil != err {
@@ -134,12 +140,9 @@ func (t *Target) Make() (err error) {
 		err = refRule.RefreshMatedataAnnotations(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
 			return res.GetAnnotations(), nil
 		})
-		if nil != err {
-			return err
-		}
 
-		return nil
+		return err
 	})
 
-	return nil
+	return err
 }

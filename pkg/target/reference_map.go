@@ -18,10 +18,11 @@ func (r ReferenceMap) Load(path string) error {
 		return err
 	}
 
-	out := reference.Reference{}
 	decoder := yaml.NewFormatErrorDecodeFromBytes(body, path)
 
 	for err == nil {
+		out := reference.Reference{}
+
 		if err = decoder.Decode(&out); nil != err {
 			continue
 		}

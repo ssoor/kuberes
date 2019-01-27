@@ -11,19 +11,15 @@ type UniqueID struct {
 
 	// original name of the resource before transformation.
 	Name string
-	// namespace the resource belongs to
-	// an untransformed resource has no namespace, fully transformed resource has the namespace from
-	// the top most overlay
-	Namespace string
 }
 
 // NewUniqueID is
 func NewUniqueID(name, namespace string, gvk GVK) UniqueID {
-	return UniqueID{Name: name, Namespace: namespace, GVK: gvk}
+	return UniqueID{Name: name, GVK: gvk}
 }
 
 func (uid UniqueID) String() string {
-	return generationIDString(uid.Name, uid.Namespace, uid.GVK)
+	return generationIDString(uid.Name, uid.GVK)
 }
 
 // Equals returns true if the Gvk's have equal fields.
@@ -31,21 +27,16 @@ func (uid UniqueID) Equals(o UniqueID) bool {
 	return uid.String() == o.String()
 }
 
-func generationIDString(name, namespace string, gvk GVK) string {
+func generationIDString(name string, gvk GVK) string {
 	// Values that are brief but meaningful in logs.
 	const (
-		noName      = "~N"
-		noNamespace = "~NS"
-		separator   = "_"
+		noName    = "~N"
+		separator = "_"
 	)
 
 	if name == "" {
 		name = noName
 	}
 
-	if namespace == "" {
-		namespace = noNamespace
-	}
-
-	return strings.Join([]string{noName, noNamespace, gvk.String()}, separator)
+	return strings.Join([]string{noName, gvk.String()}, separator)
 }
