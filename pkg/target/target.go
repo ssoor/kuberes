@@ -6,7 +6,6 @@ import (
 
 	"github.com/ssoor/kuberes/pkg/reference"
 	"github.com/ssoor/kuberes/pkg/resource"
-	"github.com/ssoor/kuberes/pkg/resourcemap"
 	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
@@ -29,20 +28,20 @@ type Target struct {
 	// of kubernetes API objects. URLs and globs not supported.
 	Resources []string `json:"resources,omitempty" yaml:"resources,omitempty"`
 
-	rules       ReferenceRuleMap
-	resourceMap resourcemap.ResourceMap
+	resourceMap  ResourceMap
+	referenceMap ReferenceMap
 }
 
 // ResourceMap is
-func (t *Target) ResourceMap() resourcemap.ResourceMap {
+func (t *Target) ResourceMap() ResourceMap {
 	return t.resourceMap
 }
 
 // NewTarget is
 func NewTarget() (*Target, error) {
 	newTarget := &Target{
-		rules:       make(ReferenceRuleMap),
-		resourceMap: resourcemap.New(),
+		resourceMap:  make(ResourceMap),
+		referenceMap: make(ReferenceMap),
 	}
 
 	return newTarget, nil
@@ -55,12 +54,12 @@ func (t *Target) Load(path string) (err error) {
 		return err
 	}
 
-	decoder := yaml.NewFormatErrorDecodeFormBytes(body, path)
+	decoder := yaml.NewFormatErrorDecodeFromBytes(body, path)
 	if err := decoder.Decode(t); nil != err {
 		return err
 	}
 
-	if t.rules.Load(fileNameReferenceRule); nil != err {
+	if t.referenceMap.Load(fileNameReferenceRule); nil != err {
 		return err
 	}
 
@@ -69,7 +68,7 @@ func (t *Target) Load(path string) (err error) {
 
 // Make is
 func (t *Target) Make() (err error) {
-	for key := range t.rules {
+	for key := range t.referenceMap {
 		fmt.Println(key)
 	}
 
@@ -98,12 +97,12 @@ func (t *Target) Make() (err error) {
 		t.Patchs.MakeResource(res)
 		t.Matedata.MakeResource(res)
 
-		references, exists := t.rules[res.GVKID()]
-		if !exists {
+		refRule := t.referenceMap.FindByGVK(res.GVKID())
+		if nil == refRule {
 			return nil // continue
 		}
 
-		err = t.refreshFields(res, references.MatedataName, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
+		err = refRule.RefreshMatedataName(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
 			id := resource.NewUniqueID(res.GetName(), res.GetNamespace(), fs.GVK)
 			res := t.resourceMap[id]
 
@@ -114,14 +113,14 @@ func (t *Target) Make() (err error) {
 			return err
 		}
 
-		err = t.refreshFields(res, references.MatedataLabels, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
+		err = refRule.RefreshMatedataLabels(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
 			return res.GetLabels(), nil
 		})
 		if nil != err {
 			return err
 		}
 
-		err = t.refreshFields(res, references.MatedataAnnotations, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
+		err = refRule.RefreshMatedataAnnotations(res, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
 			return res.GetAnnotations(), nil
 		})
 		if nil != err {
@@ -130,16 +129,6 @@ func (t *Target) Make() (err error) {
 
 		return nil
 	})
-
-	return nil
-}
-
-func (t Target) refreshFields(res *resource.Resource, fields []reference.FieldSpec, fn func(reference.FieldSpec, reference.FieldPath, interface{}) (interface{}, error)) error {
-	for _, field := range fields {
-		if err := field.Refresh(res.Map(), fn); nil != err {
-			return err
-		}
-	}
 
 	return nil
 }

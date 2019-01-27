@@ -1,7 +1,5 @@
 package target
 
-import "github.com/ssoor/kuberes/pkg/resourcemap"
-
 // Import is
 type Import struct {
 	Name   string `json:"name,omitempty" yaml:"name,omitempty"`
@@ -9,7 +7,7 @@ type Import struct {
 }
 
 // Make is
-func (i Import) Make() (resourcemap.ResourceMap, error) {
+func (i Import) Make() (ResourceMap, error) {
 	t, err := NewTarget()
 	if nil != err {
 		return nil, err

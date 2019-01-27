@@ -1,4 +1,4 @@
-package resourcemap
+package target
 
 import (
 	"bytes"
@@ -14,27 +14,6 @@ import (
 
 // ResourceMap is a map from resource ID to Resource.
 type ResourceMap map[resource.UniqueID]*resource.Resource
-
-// New is
-func New() ResourceMap {
-	return make(ResourceMap)
-}
-
-// NewFormDocoder is
-func NewFormDocoder(decoder yaml.Decoder) (ResourceMap, error) {
-	result := New()
-
-	resources, err := result.loadResources(decoder)
-	if nil != err {
-		return nil, err
-	}
-
-	if err := result.MergeFormResource(false, resources...); nil != err {
-		return nil, err
-	}
-
-	return result, nil
-}
 
 // Bytes encodes a ResMap to YAML; encoded objects separated by `---`.
 func (rm ResourceMap) Bytes() ([]byte, error) {
@@ -123,7 +102,7 @@ func (rm ResourceMap) MergeFormPath(override bool, path string) error {
 		return err
 	}
 
-	resources, err := rm.loadResources(yaml.NewFormatErrorDecodeFormBytes(body, path))
+	resources, err := rm.loadResources(yaml.NewFormatErrorDecodeFromBytes(body, path))
 	if nil != err {
 		return err
 	}
