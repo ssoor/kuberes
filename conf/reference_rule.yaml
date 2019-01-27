@@ -58,19 +58,21 @@ matedata.name:
     version: v1
     paths: 
       - spec/template/spec/volumes/persistentVolumeClaim/claimName
-metadata.labels:
+matedata.labels:
   - create: true
     paths: 
       - spec/selector/matchLabels
-      - spec/template/metadata/labels
+      - spec/template/matedata/labels
+  - create: false
+    paths: 
       - spec/template/spec/affinity/podAffinity/preferredDuringSchedulingIgnoredDuringExecution/podAffinityTerm/labelSelector/matchLabels
       - spec/template/spec/affinity/podAffinity/requiredDuringSchedulingIgnoredDuringExecution/labelSelector/matchLabels
       - spec/template/spec/affinity/podAntiAffinity/preferredDuringSchedulingIgnoredDuringExecution/podAffinityTerm/labelSelector/matchLabels
       - spec/template/spec/affinity/podAntiAffinity/requiredDuringSchedulingIgnoredDuringExecution/labelSelector/matchLabels
-metadata.annotations:
+matedata.annotations:
   - create: true
     paths: 
-      - spec/template/metadata/annotations
+      - spec/template/matedata/annotations
 
 ---
 kind: StatefulSet
@@ -106,20 +108,22 @@ matedata.name:
     version: v1
     paths: 
       - spec/template/spec/volumes/persistentVolumeClaim/claimName
-metadata.labels:
+matedata.labels:
   - create: true
     paths: 
       - spec/selector/matchLabels
-      - spec/template/metadata/labels
+      - spec/template/matedata/labels
+      - spec/volumeClaimTemplates/matedata/labels
+  - create: false
+    paths: 
       - spec/template/spec/affinity/podAffinity/preferredDuringSchedulingIgnoredDuringExecution/podAffinityTerm/labelSelector/matchLabels
       - spec/template/spec/affinity/podAffinity/requiredDuringSchedulingIgnoredDuringExecution/labelSelector/matchLabels
       - spec/template/spec/affinity/podAntiAffinity/preferredDuringSchedulingIgnoredDuringExecution/podAffinityTerm/labelSelector/matchLabels
       - spec/template/spec/affinity/podAntiAffinity/requiredDuringSchedulingIgnoredDuringExecution/labelSelector/matchLabels
-      - spec/volumeClaimTemplates/metadata/labels
-metadata.annotations:
+matedata.annotations:
   - create: true
     paths: 
-      - spec/template/metadata/annotations
+      - spec/template/matedata/annotations
 
 ---
 kind: DaemonSet
@@ -150,15 +154,15 @@ matedata.name:
     version: v1
     paths: 
       - spec/template/spec/volumes/persistentVolumeClaim/claimName
-metadata.labels:
+matedata.labels:
   - create: true
     paths: 
       - spec/selector/matchLabels
-      - spec/template/metadata/labels
-metadata.annotations:
+      - spec/template/matedata/labels
+matedata.annotations:
   - create: true
     paths: 
-      - spec/template/metadata/annotations
+      - spec/template/matedata/annotations
 
 ---
 kind: ReplicaSet
@@ -181,15 +185,43 @@ matedata.name:
       - spec/template/spec/initContainers/env/valueFrom/configMapKeyRef/name
       - spec/template/spec/containers/envFrom/configMapRef/name
       - spec/template/spec/initContainers/envFrom/configMapRef/name
-metadata.labels:
+matedata.labels:
   - create: true
     paths: 
       - spec/selector/matchLabels
-      - spec/template/metadata/labels
-metadata.annotations:
+      - spec/template/matedata/labels
+matedata.annotations:
   - create: true
     paths: 
-      - spec/template/metadata/annotations
+      - spec/template/matedata/annotations
+
+---
+kind: ReplicationController
+version: v1
+matedata.name:
+  - kind: Role
+    group: rbac.authorization.k8s.io
+    paths: 
+      - roleRef/name
+  - kind: ClusterRole
+    paths: 
+      - roleRef/name
+  - kind: ServiceAccount
+    paths: 
+      - subjects/name
+      - spec/template/spec/serviceAccountName
+  - kind: PersistentVolumeClaim
+    paths: 
+      - spec/template/spec/volumes/persistentVolumeClaim/claimName
+matedata.labels:
+  - create: true
+    paths: 
+      - spec/selector
+      - spec/template/matedata/labels
+matedata.annotations:
+  - create: true
+    paths: 
+      - spec/template/matedata/annotations
 
 ---
 kind: Job
@@ -219,15 +251,17 @@ matedata.name:
     version: v1
     paths: 
       - spec/template/spec/volumes/persistentVolumeClaim/claimName
-metadata.labels:
+matedata.labels:
   - create: true
+    paths: 
+      - spec/template/matedata/labels
+  - create: false
     paths: 
       - spec/selector/matchLabels
-      - spec/template/metadata/labels
-metadata.annotations:
+matedata.annotations:
   - create: true
     paths: 
-      - spec/template/metadata/annotations
+      - spec/template/matedata/annotations
 
 ---
 kind: CronJob
@@ -257,17 +291,19 @@ matedata.name:
     version: v1
     paths: 
       - spec/jobTemplate/spec/template/spec/volumes/persistentVolumeClaim/claimName
-metadata.labels:
+matedata.labels:
   - create: true
+    paths: 
+      - spec/jobTemplate/matedata/labels
+      - spec/jobTemplate/spec/template/matedata/labels
+  - create: false
     paths: 
       - spec/jobTemplate/spec/selector/matchLabels
-      - spec/jobTemplate/metadata/labels
-      - spec/jobTemplate/spec/template/metadata/labels
-metadata.annotations:
+matedata.annotations:
   - create: true
     paths: 
-      - spec/jobTemplate/metadata/annotations
-      - spec/jobTemplate/spec/template/metadata/annotations
+      - spec/jobTemplate/matedata/annotations
+      - spec/jobTemplate/spec/template/matedata/annotations
 
 ---
 kind: Ingress
@@ -277,8 +313,8 @@ matedata.name:
     version: v1
     paths: 
       - spec/tls/secretName
-      - metadata/annotations/ingress.kubernetes.io\/auth-secret
-      - metadata/annotations/nginx.ingress.kubernetes.io\/auth-secret
+      - matedata/annotations/ingress.kubernetes.io\/auth-secret
+      - matedata/annotations/nginx.ingress.kubernetes.io\/auth-secret
   - kind: Service
     version: v1
     paths: 
@@ -300,7 +336,7 @@ matedata.name:
 ---
 kind: Service
 version: v1
-metadata.annotations:
+matedata.labels:
   - create: true
     paths: 
       - spec/selector
@@ -329,38 +365,10 @@ matedata.name:
       - spec/scaleTargetRef/name
       
 ---
-kind: ReplicationController
-version: v1
-matedata.name:
-  - kind: Role
-    group: rbac.authorization.k8s.io
-    paths: 
-      - roleRef/name
-  - kind: ClusterRole
-    paths: 
-      - roleRef/name
-  - kind: ServiceAccount
-    paths: 
-      - subjects/name
-      - spec/template/spec/serviceAccountName
-  - kind: PersistentVolumeClaim
-    paths: 
-      - spec/template/spec/volumes/persistentVolumeClaim/claimName
-metadata.labels:
-  - create: true
-    paths: 
-      - spec/selector
-      - spec/template/metadata/labels
-metadata.annotations:
-  - create: true
-    paths: 
-      - spec/template/metadata/annotations
-
----
 kind: NetworkPolicy
 version: v1
-metadata.labels:
-  - create: true
+matedata.labels:
+  - create: false
     paths: 
       - spec/podSelector/matchLabels
       - spec/ingress/from/podSelector/matchLabels
@@ -369,7 +377,7 @@ metadata.labels:
 ---
 kind: PodDisruptionBudget
 version: v1
-metadata.labels:
+matedata.labels:
   - create: false
     paths: 
       - spec/selector/matchLabels
