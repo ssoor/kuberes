@@ -1,20 +1,12 @@
 package target
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"strings"
+	"io/ioutil"
 
-	"sigs.k8s.io/kustomize/pkg/constants"
-	"sigs.k8s.io/kustomize/pkg/ifc"
-	"sigs.k8s.io/kustomize/pkg/types"
-
-	"github.com/pkg/errors"
-
-	"github.com/ssoor/kuberes/pkg/log"
 	"github.com/ssoor/kuberes/pkg/reference"
 	"github.com/ssoor/kuberes/pkg/resource"
+	"github.com/ssoor/kuberes/pkg/resourcemap"
 	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
@@ -24,109 +16,87 @@ const (
 
 // Target is
 type Target struct {
-	ldr           ifc.Loader
-	rules         ReferenceRuleMap
-	resources     *ResourceController
-	kustomization *types.Kustomization
+	Name    string   `json:"name,omitempty" yaml:"name,omitempty"`
+	Imports []Import `json:"imports,omitempty" yaml:"imports,omitempty"`
+
+	// Patchs to add to all objects.
+	Patchs Patchs `json:"patchs,omitempty" yaml:"patchs,omitempty"`
+
+	// Matedata to add to all objects.
+	Matedata Matedata `json:"matedata,omitempty" yaml:"matedata,omitempty"`
+
+	// Resources specifies relative paths to files holding YAML representations
+	// of kubernetes API objects. URLs and globs not supported.
+	Resources []string `json:"resources,omitempty" yaml:"resources,omitempty"`
+
+	rules       ReferenceRuleMap
+	resourceMap resourcemap.ResourceMap
 }
 
-// Resources is
-func (t *Target) Resources() *ResourceController {
-	return t.resources
+// ResourceMap is
+func (t *Target) ResourceMap() resourcemap.ResourceMap {
+	return t.resourceMap
 }
 
 // NewTarget is
-func NewTarget(ldr ifc.Loader) (*Target, error) {
-	content, err := loadKustFile(ldr)
-	if err != nil {
-		return nil, err
-	}
-
-	var k types.Kustomization
-	if err := unmarshal(content, &k); err != nil {
-		return nil, err
-	}
-
-	k.DealWithDeprecatedFields()
-	msgs, errs := k.EnforceFields()
-	if len(errs) > 0 {
-		return nil, fmt.Errorf(strings.Join(errs, "\n"))
-	}
-	if len(msgs) > 0 {
-		log.Printf(strings.Join(msgs, "\n"))
-	}
-
+func NewTarget() (*Target, error) {
 	newTarget := &Target{
-		ldr:           ldr,
-		kustomization: &k,
-	}
-
-	newTarget.rules, err = LoadReferenceRuleMapFormFile(fileNameReferenceRule)
-	if nil != err {
-		return nil, err
+		rules:       make(ReferenceRuleMap),
+		resourceMap: resourcemap.New(),
 	}
 
 	return newTarget, nil
 }
 
-func loadKustFile(ldr ifc.Loader) ([]byte, error) {
-	for _, kf := range []string{
-		constants.KustomizationFileName,
-		constants.SecondaryKustomizationFileName} {
-		content, err := ldr.Load(kf)
-		if err == nil {
-			return content, nil
-		}
-		if !strings.Contains(err.Error(), "no such file or directory") {
-			return nil, err
-		}
-	}
-	return nil, fmt.Errorf("no kustomization.yaml file under %s", ldr.Root())
-}
-
-func unmarshal(y []byte, o interface{}) error {
-	j, err := yaml.ToJSONFormBytes(y)
-	if err != nil {
-		return err
-	}
-	dec := json.NewDecoder(bytes.NewReader(j))
-	dec.DisallowUnknownFields()
-	return dec.Decode(o)
-}
-
 // Load is
-func (t *Target) Load() (err error) {
-	if t.resources, err = NewResourceController(); nil != err {
+func (t *Target) Load(path string) (err error) {
+	body, err := ioutil.ReadFile(path)
+	if nil != err {
 		return err
 	}
 
-	for _, path := range t.kustomization.Resources {
-		content, err := t.ldr.Load(path)
-		if err != nil {
-			return errors.Wrap(err, "Load from path "+path+" failed")
-		}
+	decoder := yaml.NewFormatErrorDecodeFormBytes(body, path)
+	if err := decoder.Decode(t); nil != err {
+		return err
+	}
 
-		res, err := t.resources.LoadResourcesFormBytes(yaml.NewFormatErrorDecodeFormBytes(content, path))
-		if err != nil {
-			return err
-		}
-
-		if err := t.resources.MergeResources(false, res...); nil != err {
-			return err
-		}
+	if t.rules.Load(fileNameReferenceRule); nil != err {
+		return err
 	}
 
 	return nil
 }
 
-// RefreshReferences is
-func (t *Target) RefreshReferences() (err error) {
+// Make is
+func (t *Target) Make() (err error) {
 	for key := range t.rules {
 		fmt.Println(key)
 	}
 
-	t.resources.Range(func(id resource.UniqueID, res *resource.Resource) error {
+	for _, depend := range t.Imports {
+		resourceMap, err := depend.Make()
+		if nil != err {
+			return err
+		}
+
+		if err := t.resourceMap.Merge(false, resourceMap); nil != err {
+			return err
+		}
+	}
+
+	for _, path := range t.Resources {
+		if err := t.resourceMap.MergeFormPath(false, path); nil != err {
+			return err
+		}
+	}
+
+	t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
 		fmt.Printf("id => %v ,res.ID() => %v\n", id, res.ID())
+
+		res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
+
+		t.Patchs.MakeResource(res)
+		t.Matedata.MakeResource(res)
 
 		references, exists := t.rules[res.GVKID()]
 		if !exists {
@@ -135,7 +105,7 @@ func (t *Target) RefreshReferences() (err error) {
 
 		err = t.refreshFields(res, references.MatedataName, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
 			id := resource.NewUniqueID(res.GetName(), res.GetNamespace(), fs.GVK)
-			res := t.resources.Find(id)
+			res := t.resourceMap[id]
 
 			fmt.Println(id, fp, res.GetName())
 			return res.GetName(), nil

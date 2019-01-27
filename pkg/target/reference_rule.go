@@ -20,20 +20,12 @@ type ReferenceRule struct {
 // ReferenceRuleMap is a map from resource ID to Resource.
 type ReferenceRuleMap map[gvk.GVK]ReferenceRule
 
-// LoadReferenceRuleMapFormFile is
-func LoadReferenceRuleMapFormFile(filename string) (ReferenceRuleMap, error) {
-	body, err := ioutil.ReadFile(filename)
+// Load is
+func (r ReferenceRuleMap) Load(path string) error {
+	body, err := ioutil.ReadFile(path)
 	if nil != err {
-		return nil, err
+		return err
 	}
-
-	return LoadReferenceRuleMapFormBytes(body, filename)
-}
-
-// LoadReferenceRuleMapFormBytes is
-func LoadReferenceRuleMapFormBytes(body []byte, path string) (ruleMap ReferenceRuleMap, err error) {
-	ruleMap = make(ReferenceRuleMap)
-
 	out := ReferenceRule{}
 	decoder := yaml.NewFormatErrorDecodeFormBytes(body, path)
 
@@ -43,8 +35,8 @@ func LoadReferenceRuleMapFormBytes(body []byte, path string) (ruleMap ReferenceR
 		}
 
 		err = nil
-		ruleMap[out.GVK] = out
+		r[out.GVK] = out
 	}
 
-	return ruleMap, nil
+	return nil
 }
