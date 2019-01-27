@@ -1,23 +1,23 @@
-package resource
+package gvk
 
 import (
 	"strings"
 )
 
-// GVKID unambiguously identifies a kind.  It doesn't anonymously include GroupVersion
+// GVK unambiguously identifies a kind.  It doesn't anonymously include GroupVersion
 // to avoid automatic coercion.  It doesn't use a GroupVersion to avoid custom marshalling
-type GVKID struct {
+type GVK struct {
 	Group   string `json:"group,omitempty" yaml:"group,omitempty"`
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	Kind    string `json:"kind,omitempty" yaml:"kind,omitempty"`
 }
 
-func (fs GVKID) String() string {
+func (fs GVK) String() string {
 	return generationGVKIDString(fs.Group, fs.Version, fs.Kind)
 }
 
 // Equals returns true if the Gvk's have equal fields.
-func (fs GVKID) Equals(o GVKID) bool {
+func (fs GVK) Equals(o GVK) bool {
 	return fs.String() == o.String()
 }
 

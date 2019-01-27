@@ -3,14 +3,14 @@ package target
 import (
 	"io/ioutil"
 
+	"github.com/ssoor/kuberes/pkg/gvk"
 	"github.com/ssoor/kuberes/pkg/reference"
-	"github.com/ssoor/kuberes/pkg/resource"
 	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
 // ReferenceRule is
 type ReferenceRule struct {
-	resource.GVKID `json:",inline,omitempty" yaml:",inline,omitempty"`
+	gvk.GVK `json:",inline,omitempty" yaml:",inline,omitempty"`
 
 	MatedataName        []reference.FieldSpec `json:"matedata.name,omitempty" yaml:"matedata.name,omitempty"`
 	MatedataLabels      []reference.FieldSpec `json:"matedata.labels,omitempty" yaml:"matedata.labels,omitempty"`
@@ -18,7 +18,7 @@ type ReferenceRule struct {
 }
 
 // ReferenceRuleMap is a map from resource ID to Resource.
-type ReferenceRuleMap map[resource.GVKID]ReferenceRule
+type ReferenceRuleMap map[gvk.GVK]ReferenceRule
 
 // LoadReferenceRuleMapFormFile is
 func LoadReferenceRuleMapFormFile(filename string) (ReferenceRuleMap, error) {
@@ -43,7 +43,7 @@ func LoadReferenceRuleMapFormBytes(body []byte, path string) (ruleMap ReferenceR
 		}
 
 		err = nil
-		ruleMap[out.GVKID] = out
+		ruleMap[out.GVK] = out
 	}
 
 	return ruleMap, nil

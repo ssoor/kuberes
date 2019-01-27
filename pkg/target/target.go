@@ -134,7 +134,7 @@ func (t *Target) RefreshReferences() (err error) {
 		}
 
 		err = t.refreshFields(res, references.MatedataName, func(fs reference.FieldSpec, fp reference.FieldPath, in interface{}) (interface{}, error) {
-			id := resource.NewUniqueID(res.GetName(), res.GetNamespace(), fs.GVKID)
+			id := resource.NewUniqueID(res.GetName(), res.GetNamespace(), fs.GVK)
 			res := t.resources.Find(id)
 
 			fmt.Println(id, fp, res.GetName())
@@ -166,7 +166,7 @@ func (t *Target) RefreshReferences() (err error) {
 
 func (t Target) refreshFields(res *resource.Resource, fields []reference.FieldSpec, fn func(reference.FieldSpec, reference.FieldPath, interface{}) (interface{}, error)) error {
 	for _, field := range fields {
-		if err := field.Refresh(res, fn); nil != err {
+		if err := field.Refresh(res.Map(), fn); nil != err {
 			return err
 		}
 	}

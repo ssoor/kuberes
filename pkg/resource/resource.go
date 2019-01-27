@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ssoor/kuberes/pkg/gvk"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -67,10 +68,10 @@ func (r *Resource) String() string {
 }
 
 // GVKID returns the GVKID for the resource.
-func (r *Resource) GVKID() GVKID {
-	gvk := r.GroupVersionKind()
+func (r *Resource) GVKID() gvk.GVK {
+	rgvk := r.GroupVersionKind()
 
-	return GVKID{gvk.Group, gvk.Version, gvk.Kind}
+	return gvk.GVK{Group: rgvk.Group, Version: rgvk.Version, Kind: rgvk.Kind}
 }
 
 // ID returns the ID for the resource.

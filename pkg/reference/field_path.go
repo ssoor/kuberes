@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/ssoor/kuberes/pkg/log"
-	"github.com/ssoor/kuberes/pkg/resource"
 )
 
 const (
@@ -37,8 +36,8 @@ func (fp FieldPath) Slice() []string {
 }
 
 // Refresh is
-func (fp FieldPath) Refresh(res *resource.Resource, create bool, fn func(FieldPath, interface{}) (interface{}, error)) error {
-	return fp.refreshMap(res.Map(), fp.Slice(), create, fn)
+func (fp FieldPath) Refresh(body map[string]interface{}, create bool, fn func(FieldPath, interface{}) (interface{}, error)) error {
+	return fp.refreshMap(body, fp.Slice(), create, fn)
 }
 
 func (fp FieldPath) refreshMap(resourceMap map[string]interface{}, keys []string, create bool, fn func(FieldPath, interface{}) (interface{}, error)) (err error) {
