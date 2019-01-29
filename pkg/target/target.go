@@ -12,27 +12,6 @@ const (
 	configPathReferenceRule = ".kuberes/reference.yaml"
 )
 
-type Patchs struct {
-	RFC6902   []RFC6902Patch `json:"rfc6902,omitempty" yaml:"rfc6902,omitempty"`
-	Strategic []string       `json:"strategic,omitempty" yaml:"strategic,omitempty"`
-}
-
-// Target is
-type Target struct {
-	Name    string   `json:"name,omitempty" yaml:"name,omitempty"`
-	Imports []Import `json:"imports,omitempty" yaml:"imports,omitempty"`
-
-	// Patchs to add to all objects.
-	Patchs Patchs `json:"patchs,omitempty" yaml:"patchs,omitempty"`
-
-	// Matedata to add to all objects.
-	Matedata Matedata `json:"matedata,omitempty" yaml:"matedata,omitempty"`
-
-	// Resources specifies relative paths to files holding YAML representations
-	// of kubernetes API objects. URLs and globs not supported.
-	Resources []string `json:"resources,omitempty" yaml:"resources,omitempty"`
-}
-
 // Maker is
 type Maker interface {
 	Make() (map[resource.UniqueID]*resource.Resource, error)
@@ -40,9 +19,11 @@ type Maker interface {
 
 // targetMake is
 type targetMake struct {
-	name   string
-	conf   *Target
-	loader loader.Loader
+	l loader.Loader
+
+	name string
+	conf *Target
+
 	resc   ResourceController
 	refc   *ReferenceControl
 	patchc PatchController
@@ -77,6 +58,7 @@ func NewMaker(loader loader.Loader, name string) (Maker, error) {
 	}
 
 	t := &targetMake{
+		l:      loader,
 		name:   name,
 		conf:   conf,
 		resc:   resc,
@@ -93,8 +75,22 @@ func NewMaker(loader loader.Loader, name string) (Maker, error) {
 
 // Make is
 func (t *targetMake) Make() (resourceMap map[resource.UniqueID]*resource.Resource, err error) {
-	if err := t.loadImports(); nil != err {
-		return nil, err
+	for _, depend := range t.conf.Imports {
+		dependMaker, err := NewMaker(t.l.Sub(depend.Attach), depend.Name)
+		if nil != err {
+			return nil, err
+		}
+
+		dependRes, err := dependMaker.Make()
+		if nil != err {
+			return nil, err
+		}
+
+		for id, res := range dependRes {
+			if err := t.resc.Add(id, res, false); nil != err {
+				return nil, err
+			}
+		}
 	}
 
 	if err := t.resc.Range(func(id resource.UniqueID, res *resource.Resource) error {
@@ -146,24 +142,6 @@ func (t targetMake) modify(res *resource.Resource) error {
 
 	return nil
 
-}
-
-func (t *targetMake) loadImports() error {
-	for _, depend := range t.conf.Imports {
-		resourceMap, err := depend.Make(t.loader)
-		if nil != err {
-			return err
-		}
-
-		for id, res := range resourceMap {
-			if err := t.resc.Add(id, res, false); nil != err {
-				return err
-			}
-		}
-
-	}
-
-	return nil
 }
 
 // MergeMap is
