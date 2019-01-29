@@ -2,6 +2,7 @@ package target
 
 import (
 	"github.com/ssoor/kuberes/pkg/loader"
+	"github.com/ssoor/kuberes/pkg/log"
 	"github.com/ssoor/kuberes/pkg/merge"
 	"github.com/ssoor/kuberes/pkg/resource"
 	"github.com/ssoor/kuberes/pkg/yaml"
@@ -24,15 +25,17 @@ type PatchController interface {
 }
 
 type patchControl struct {
-	l    loader.Loader
-	resc ResourceController
+	l loader.Loader
 
 	mergerMap map[resource.UniqueID][]merge.Merger
 }
 
 // NewPatchController is
 func NewPatchController(loader loader.Loader, rfc6902Patchs []RFC6902Patch, strategicPatchs []string) (PatchController, error) {
-	pc := &patchControl{}
+	pc := &patchControl{
+		l:         loader,
+		mergerMap: make(map[resource.UniqueID][]merge.Merger),
+	}
 
 	for _, patch := range rfc6902Patchs {
 		if err := pc.addRFC6902Patch(patch); nil != err {
@@ -53,6 +56,8 @@ func NewPatchController(loader loader.Loader, rfc6902Patchs []RFC6902Patch, stra
 func (pc *patchControl) Patch(res *resource.Resource) (err error) {
 	resMap := res.Map()
 	mergers := pc.mergerMap[res.ID()]
+
+	log.Debug("PATCH: ", res.ID())
 	for _, merger := range mergers {
 		versionObj, err := scheme.Scheme.New(pc.toSchemaGvk(res.GVK()))
 		if nil != err {
@@ -83,6 +88,7 @@ func (pc *patchControl) addRFC6902Patch(patch RFC6902Patch) error {
 		}
 	}
 
+	log.Debug("PATCH ADD: ", patch.UniqueID)
 	pc.mergerMap[patch.UniqueID] = append(pc.mergerMap[patch.UniqueID], merge.NewRFC6902Merger(body))
 
 	return nil
@@ -112,6 +118,7 @@ func (pc *patchControl) addStrategicPatch(path string) error {
 			return err
 		}
 
+		log.Debug("PATCH ADD: ", patch.ID())
 		pc.mergerMap[patch.ID()] = append(pc.mergerMap[patch.ID()], merger)
 	}
 

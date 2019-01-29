@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "gitlab-ce"
+spec:
+  template:
+    spec:
+      initContainers:
+      - name: init-command
+        image: debian
+        command:
+        - 'echo {{ (uid "apps/v1" "Deployment" "gitlab-ce") | ref "path" }}'
+        # - "echo {{}}"
+      containers:
+      # - name: wordpress
+      #   env:
+      #   - name: WORDPRESS_DB_HOST
+      #     value: $(MYSQL_SERVICE)
+      #   - name: WORDPRESS_DB_PASSWORD
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: config
+      #         key: password

@@ -96,6 +96,11 @@ func (r *Resource) String() string {
 	return r.b.String() + ":" + strings.TrimSpace(string(bs))
 }
 
+// Bytes encodes a ResMap to YAML; encoded objects separated by `---`.
+func (r Resource) Bytes() ([]byte, error) {
+	return yaml.Marshal(r.Map())
+}
+
 // GVK returns the GVK for the resource.
 func (r *Resource) GVK() GVK {
 	rgvk := r.GroupVersionKind()
@@ -123,44 +128,64 @@ func (r *Resource) ScanPath(path Path, force bool, fn func(interface{}) (interfa
 	return r.scanMap(r.Object, path.Slice(), force, fn)
 }
 
-func (r *Resource) scanMap(scanMap map[string]interface{}, keys []string, force bool, fn func(interface{}) (interface{}, error)) error {
-	for index, key := range keys {
-		val, found := scanMap[key]
+func (r *Resource) scanMap(scanMap map[string]interface{}, keys []string, force bool, fn func(interface{}) (interface{}, error)) (err error) {
+	key := keys[0]
 
-		if !found {
-			val = nil
-		}
+	var found bool
+	var value interface{}
 
-		switch nextVal := val.(type) {
+	if value, found = scanMap[key]; !found {
+		value = nil
+	}
+
+	if 1 == len(keys) {
+		switch nextVal := value.(type) {
 		case nil: // not found || value == nil
-			if !force {
-				return nil
-			}
-
-			nextMap := make(map[string]interface{})
-			scanMap[key] = nextMap
-
-			scanMap = nextMap
-		case map[string]interface{}:
-			scanMap = nextVal
+			return nil
 		case []interface{}:
-			for i := range nextVal {
-				nextMap, ok := nextVal[i].(map[string]interface{})
-				if !ok {
-					return fmt.Errorf("%#v is expected to be %T", nextVal[i], nextMap)
-				}
-
-				if err := r.scanMap(nextMap, keys[index:], force, fn); err != nil {
+			for _, value = range nextVal {
+				if scanMap[key], err = fn(value); nil != err {
 					return err
 				}
 			}
-			return nil
+
 		default:
-			return fmt.Errorf("%#v is not expected to be a primitive type", nextVal)
+			scanMap[key], err = fn(value)
+
+			return err
 		}
 	}
 
-	return nil
+	switch nextVal := value.(type) {
+	case nil: // not found || value == nil
+		if !force {
+			return nil
+		}
+
+		interfaceVal := make(map[string]interface{})
+		scanMap[key] = interfaceVal
+
+		scanMap = interfaceVal
+	case []interface{}:
+		for i := range nextVal {
+			nextMap, ok := nextVal[i].(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("%#v is expected to be %T", nextVal[i], nextMap)
+			}
+
+			if err := r.scanMap(nextMap, keys[1:], force, fn); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	case map[string]interface{}:
+		scanMap = nextVal
+	default:
+		return fmt.Errorf("%#v is not expected to be a primitive type", nextVal)
+	}
+
+	return r.scanMap(scanMap, keys[1:], force, fn)
 }
 
 // Validate validates that u has kind and name

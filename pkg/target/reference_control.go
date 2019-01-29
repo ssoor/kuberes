@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 
 	"github.com/ssoor/kuberes/pkg/loader"
+	"github.com/ssoor/kuberes/pkg/log"
 	"github.com/ssoor/kuberes/pkg/resource"
 	"github.com/ssoor/kuberes/pkg/yaml"
 )
@@ -29,6 +30,7 @@ type RefreshHandle func(FieldSpec, resource.Path, interface{}) (interface{}, err
 // NewReferenceControl is
 func NewReferenceControl(l loader.Loader, path string) (*ReferenceControl, error) {
 	rc := &ReferenceControl{
+		handleMap:    make(map[string]RefreshHandle),
 		referenceMap: make(map[resource.GVK]*ReferenceRule),
 	}
 
@@ -44,6 +46,7 @@ func NewReferenceControl(l loader.Loader, path string) (*ReferenceControl, error
 
 	var items []*ReferenceRule
 
+	err = nil
 	for err == nil {
 		out := &ReferenceRule{}
 
@@ -59,6 +62,7 @@ func NewReferenceControl(l loader.Loader, path string) (*ReferenceControl, error
 	}
 
 	for _, ref := range items {
+		log.Debug("REFERENCE ADD:", ref.GVK)
 		rc.referenceMap[ref.GVK] = ref
 	}
 
@@ -83,7 +87,14 @@ func (rc ReferenceControl) getRule(key resource.GVK) *ReferenceRule {
 // Refresh is
 func (rc ReferenceControl) Refresh(res *resource.Resource) error {
 	rule := rc.getRule(res.GVK())
+	if nil == rule {
+		log.Debug("REFERENCE NOT FOUND:", res.GVK())
+		return nil
+	}
+
 	for name, fileds := range rule.FieldSpecs {
+		log.Debug("REFERENCE:", name, res.GVK())
+
 		for _, field := range fileds {
 			err := field.Refresh(res, func(path resource.Path, in interface{}) (out interface{}, err error) {
 				handle := rc.handleMap[name]

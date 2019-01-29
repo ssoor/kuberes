@@ -1,18 +1,14 @@
 package target
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/ssoor/kuberes/pkg/loader"
 	"github.com/ssoor/kuberes/pkg/resource"
-	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
 // ResourceController is
 type ResourceController interface {
-	Bytes() ([]byte, error)
-
 	Map() map[resource.UniqueID]*resource.Resource
 
 	Get(id resource.UniqueID) *resource.Resource
@@ -98,32 +94,4 @@ func (rc resourceControl) Merge(override bool, resources ...*resource.Resource) 
 	}
 
 	return nil
-}
-
-// Bytes encodes a ResMap to YAML; encoded objects separated by `---`.
-func (rc resourceControl) Bytes() ([]byte, error) {
-	var ids []resource.UniqueID
-	for id := range rc.resourceMap {
-		ids = append(ids, id)
-	}
-	// sort.Sort(IdSlice(ids))
-
-	buf := bytes.NewBuffer([]byte{})
-
-	for _, id := range ids {
-		out, err := yaml.Marshal(rc.Get(id).Map())
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err = buf.Write(out); err != nil {
-			return nil, err
-		}
-
-		if _, err = buf.Write([]byte("---\n")); err != nil {
-			return nil, err
-		}
-	}
-
-	return buf.Bytes(), nil
 }

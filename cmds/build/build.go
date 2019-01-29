@@ -3,6 +3,7 @@ package build
 import (
 	"errors"
 	"io"
+	"os"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -100,29 +101,37 @@ func (o *CommandOptions) Run(out io.Writer, fSys fs.FileSystem, rf *resmap.Facto
 	}
 	defer ldr.Close()
 
-	buildTarget, err := target.NewTarget(ldr)
+	buildTarget, err := target.NewMaker(ldr, "")
 	if err != nil {
 		return err
 	}
 
-	if err := buildTarget.Load(); err != nil {
-		return err
-	}
-
-	resourceMap, err := buildTarget.Make()
-	if err != nil {
-		return err
-	}
-
-	// Output the objects.
-	res, err := resourceMap.Bytes()
+	resources, err := buildTarget.Make()
 	if err != nil {
 		return err
 	}
 
 	if o.outputPath != "" {
-		return fSys.WriteFile(o.outputPath, res)
+		out, err = os.OpenFile(o.outputPath, os.O_WRONLY|os.O_CREATE, 0666)
+		if nil != err {
+			return err
+		}
 	}
-	_, err = out.Write(res)
-	return err
+
+	for _, res := range resources {
+		body, err := res.Bytes()
+		if err != nil {
+			return err
+		}
+
+		if _, err = out.Write(body); err != nil {
+			return err
+		}
+
+		if _, err = out.Write([]byte("---\n")); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
