@@ -1,6 +1,11 @@
 kind: Pod
 version: v1
 spec:
+  template:
+    - paths: 
+        - spec/containers/args
+        - spec/containers/command
+        - spec/containers/env/value
   matedata.name:
     - kind: Secret
       version: v1
@@ -32,6 +37,14 @@ kind: Deployment
 group: apps
 version: v1
 spec:
+  template:
+    - paths: 
+        - spec/template/spec/containers/args
+        - spec/template/spec/initContainers/args
+        - spec/template/spec/containers/command
+        - spec/template/spec/initContainers/command
+        - spec/template/spec/containers/env/value
+        - spec/template/spec/initContainers/env/value
   matedata.name:
     - kind: Secret
       version: v1
@@ -80,6 +93,14 @@ spec:
 kind: StatefulSet
 version: v1
 spec:
+  template:
+    - paths: 
+        - spec/template/spec/containers/args
+        - spec/template/spec/initContainers/args
+        - spec/template/spec/containers/command
+        - spec/template/spec/initContainers/command
+        - spec/template/spec/containers/env/value
+        - spec/template/spec/initContainers/env/value
   matedata.name:
     - kind: Secret
       version: v1
@@ -233,6 +254,11 @@ spec:
 kind: Job
 version: v1
 spec:
+  template:
+    - paths: 
+        - spec/template/spec/containers/args
+        - spec/template/spec/containers/command
+        - spec/template/spec/containers/env/value
   matedata.name:
     - kind: Secret
       version: v1
@@ -274,6 +300,11 @@ spec:
 kind: CronJob
 version: v1
 spec:
+  template:
+    - paths: 
+        - spec/jobTemplate/spec/template/spec/containers/args
+        - spec/jobTemplate/spec/template/spec/containers/command
+        - spec/jobTemplate/spec/template/spec/containers/env/value
   matedata.name:
     - kind: Secret
       version: v1
@@ -317,6 +348,10 @@ spec:
 kind: Ingress
 version: v1
 spec:
+  template:
+    - paths: 
+        - spec/tls/hosts
+        - spec/rules/host
   matedata.name:
     - kind: Secret
       version: v1

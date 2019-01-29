@@ -1,10 +1,14 @@
 package target
 
 import (
+	"bytes"
 	"fmt"
+	"text/template"
 
 	"github.com/ssoor/kuberes/pkg/loader"
+	"github.com/ssoor/kuberes/pkg/log"
 	"github.com/ssoor/kuberes/pkg/resource"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const (
@@ -14,7 +18,7 @@ const (
 
 // Maker is
 type Maker interface {
-	Make() (map[resource.UniqueID]*resource.Resource, error)
+	Make() ([]*resource.Resource, error)
 }
 
 // targetMake is
@@ -42,19 +46,23 @@ func NewMaker(loader loader.Loader, name string) (Maker, error) {
 		return nil, err
 	}
 
-	resc, err := NewResourceControl(loader, conf.Resources)
-	if nil != err {
-		return nil, nil
+	if "" == name {
+		name = conf.Name
 	}
 
-	refc, err := NewReferenceControl(loader, loaderPathTarget)
+	resc, err := NewResourceControl(loader, conf.Resources)
 	if nil != err {
-		return nil, nil
+		return nil, err
+	}
+
+	refc, err := NewReferenceControl(loader, configPathReferenceRule)
+	if nil != err {
+		return nil, err
 	}
 
 	patchc, err := NewPatchController(loader, conf.Patchs.RFC6902, conf.Patchs.Strategic)
 	if nil != err {
-		return nil, nil
+		return nil, err
 	}
 
 	t := &targetMake{
@@ -66,6 +74,8 @@ func NewMaker(loader loader.Loader, name string) (Maker, error) {
 		patchc: patchc,
 	}
 
+	refc.AddRefreshHandle("template", t.refreshTemplate)
+
 	refc.AddRefreshHandle("matedata.name", t.refreshName)
 	refc.AddRefreshHandle("matedata.labels", t.refreshLabels)
 	refc.AddRefreshHandle("matedata.annotations", t.refreshAnnotations)
@@ -74,7 +84,7 @@ func NewMaker(loader loader.Loader, name string) (Maker, error) {
 }
 
 // Make is
-func (t *targetMake) Make() (resourceMap map[resource.UniqueID]*resource.Resource, err error) {
+func (t *targetMake) Make() (resources []*resource.Resource, err error) {
 	for _, depend := range t.conf.Imports {
 		dependMaker, err := NewMaker(t.l.Sub(depend.Attach), depend.Name)
 		if nil != err {
@@ -86,8 +96,8 @@ func (t *targetMake) Make() (resourceMap map[resource.UniqueID]*resource.Resourc
 			return nil, err
 		}
 
-		for id, res := range dependRes {
-			if err := t.resc.Add(id, res, false); nil != err {
+		for _, res := range dependRes {
+			if err := t.resc.Add(res.ID(), res, false); nil != err {
 				return nil, err
 			}
 		}
@@ -107,20 +117,18 @@ func (t *targetMake) Make() (resourceMap map[resource.UniqueID]*resource.Resourc
 		return nil, err
 	}
 
-	resourceMap = make(map[resource.UniqueID]*resource.Resource)
 	if err := t.resc.Range(func(id resource.UniqueID, res *resource.Resource) error {
 		if err := t.refc.Refresh(res); nil != err {
 			return err
 		}
 
-		resourceMap[res.ID()] = res
-
+		resources = append(resources, res)
 		return nil
 	}); nil != err {
 		return nil, err
 	}
 
-	return resourceMap, nil
+	return resources, nil
 }
 
 func (t targetMake) modify(res *resource.Resource) error {
@@ -159,6 +167,62 @@ func (t targetMake) mergeMap(src map[string]string, merge map[string]string) map
 	}
 
 	return src
+}
+
+func (t *targetMake) refreshTemplate(fs FieldSpec, path resource.Path, in interface{}) (interface{}, error) {
+	var tempText string
+
+	switch inVal := in.(type) {
+	case string:
+		tempText = inVal
+	default:
+		panic("TODO")
+	}
+
+	tmpl := template.New("Tmpl").Funcs(template.FuncMap{
+		"uid": func(apiVersion, kind, name string) resource.UniqueID {
+			gv, err := schema.ParseGroupVersion(apiVersion)
+			if err != nil {
+				log.Warn("API Version incorrect format")
+			}
+
+			return resource.NewUniqueID(name, resource.GVK{Group: gv.Group, Version: gv.Version, Kind: kind})
+		},
+		"ref": func(path string, id resource.UniqueID) (value string) {
+			res := t.resc.Get(id)
+			if nil == res {
+				log.Warn("no matching resources found")
+
+				return ""
+			}
+
+			if err := res.ScanPath(resource.Path(path), false, func(in interface{}) (interface{}, error) {
+				switch val := in.(type) {
+				case string:
+					value = val
+				default:
+					panic("TODO")
+				}
+
+				return in, nil
+			}); nil != err {
+				panic("TODO")
+			}
+
+			return value
+		},
+	})
+
+	if _, err := tmpl.Parse(tempText); nil != err {
+		return nil, err
+	}
+
+	outBuff := bytes.NewBufferString("")
+	if err := tmpl.Execute(outBuff, nil); err != nil {
+		return nil, err
+	}
+
+	return outBuff.String(), nil
 }
 
 func (t *targetMake) refreshName(fs FieldSpec, path resource.Path, in interface{}) (interface{}, error) {
