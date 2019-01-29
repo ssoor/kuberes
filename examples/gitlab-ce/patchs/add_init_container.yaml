@@ -9,7 +9,7 @@ spec:
       - name: init-command
         image: debian
         command:
-        - 'echo {{ (uid "apps/v1" "Deployment" "gitlab-ce") | ref "path" }}'
+        - 'echo {{ (uid "apps/v1" "Deployment" "gitlab-ce") | ref "metadata/name" }}'
         # - "echo {{}}"
       containers:
       # - name: wordpress

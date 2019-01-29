@@ -141,7 +141,6 @@ func (r *Resource) scanMap(scanMap map[string]interface{}, keys []string, force 
 	if 1 == len(keys) {
 		switch nextVal := value.(type) {
 		case nil: // not found || value == nil
-			return nil
 		case []interface{}:
 			for _, value = range nextVal {
 				if scanMap[key], err = fn(value); nil != err {
@@ -151,9 +150,9 @@ func (r *Resource) scanMap(scanMap map[string]interface{}, keys []string, force 
 
 		default:
 			scanMap[key], err = fn(value)
-
-			return err
 		}
+
+		return err
 	}
 
 	switch nextVal := value.(type) {
