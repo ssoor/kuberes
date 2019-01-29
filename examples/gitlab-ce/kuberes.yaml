@@ -1,8 +1,6 @@
 kind: Target
 apiVersion: v1
 name: git
-config:
-  reference: "conf/reference.yaml"
 imports:
   - name: http
     attach: imports/web

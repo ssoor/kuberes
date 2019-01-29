@@ -1,6 +1,9 @@
 package target
 
-import "github.com/ssoor/kuberes/pkg/loader"
+import (
+	"github.com/ssoor/kuberes/pkg/loader"
+	"github.com/ssoor/kuberes/pkg/resource"
+)
 
 // Import is
 type Import struct {
@@ -9,17 +12,11 @@ type Import struct {
 }
 
 // Make is
-func (i Import) Make(loader loader.Loader) (ResourceMap, error) {
-	t, err := NewTarget(loader.Sub(i.Attach))
+func (i Import) Make(loader loader.Loader) (map[resource.UniqueID]*resource.Resource, error) {
+	t, err := NewMaker(loader.Sub(i.Attach), i.Name)
 	if nil != err {
 		return nil, err
 	}
-
-	if err := t.Load(); err != nil {
-		return nil, err
-	}
-
-	t.Name = i.Name
 
 	return t.Make()
 }

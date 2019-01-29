@@ -118,6 +118,51 @@ func (r *Resource) SetMap(m map[string]interface{}) {
 	r.Object = m
 }
 
+// ScanPath returns the Map for the resource.
+func (r *Resource) ScanPath(path Path, force bool, fn func(interface{}) (interface{}, error)) error {
+	return r.scanMap(r.Object, path.Slice(), force, fn)
+}
+
+func (r *Resource) scanMap(scanMap map[string]interface{}, keys []string, force bool, fn func(interface{}) (interface{}, error)) error {
+	for index, key := range keys {
+		val, found := scanMap[key]
+
+		if !found {
+			val = nil
+		}
+
+		switch nextVal := val.(type) {
+		case nil: // not found || value == nil
+			if !force {
+				return nil
+			}
+
+			nextMap := make(map[string]interface{})
+			scanMap[key] = nextMap
+
+			scanMap = nextMap
+		case map[string]interface{}:
+			scanMap = nextVal
+		case []interface{}:
+			for i := range nextVal {
+				nextMap, ok := nextVal[i].(map[string]interface{})
+				if !ok {
+					return fmt.Errorf("%#v is expected to be %T", nextVal[i], nextMap)
+				}
+
+				if err := r.scanMap(nextMap, keys[index:], force, fn); err != nil {
+					return err
+				}
+			}
+			return nil
+		default:
+			return fmt.Errorf("%#v is not expected to be a primitive type", nextVal)
+		}
+	}
+
+	return nil
+}
+
 // Validate validates that u has kind and name
 // except for kind `List`, which doesn't require a name
 func (r *Resource) Validate() error {

@@ -2,18 +2,20 @@ package target
 
 import (
 	"fmt"
-	"io/ioutil"
 
 	"github.com/ssoor/kuberes/pkg/loader"
-	"github.com/ssoor/kuberes/pkg/reference"
 	"github.com/ssoor/kuberes/pkg/resource"
-	"github.com/ssoor/kuberes/pkg/yaml"
 )
 
 const (
 	loaderPathTarget        = "kuberes.yaml"
 	configPathReferenceRule = ".kuberes/reference.yaml"
 )
+
+type Patchs struct {
+	RFC6902   []RFC6902Patch `json:"rfc6902,omitempty" yaml:"rfc6902,omitempty"`
+	Strategic []string       `json:"strategic,omitempty" yaml:"strategic,omitempty"`
+}
 
 // Target is
 type Target struct {
@@ -29,170 +31,193 @@ type Target struct {
 	// Resources specifies relative paths to files holding YAML representations
 	// of kubernetes API objects. URLs and globs not supported.
 	Resources []string `json:"resources,omitempty" yaml:"resources,omitempty"`
-
-	loader       loader.Loader
-	resourceMap  ResourceMap
-	referenceMap ReferenceMap
 }
 
-// NewTarget is
-func NewTarget(loader loader.Loader) (*Target, error) {
-	newTarget := &Target{
-		loader:       loader,
-		resourceMap:  make(ResourceMap),
-		referenceMap: make(ReferenceMap),
-	}
-
-	return newTarget, nil
+// Maker is
+type Maker interface {
+	Make() (map[resource.UniqueID]*resource.Resource, error)
 }
 
-// Load is
-func (t *Target) Load() (err error) {
-	decoder, err := t.loader.LoadYamlDecoder(loaderPathTarget)
+// targetMake is
+type targetMake struct {
+	name   string
+	conf   *Target
+	loader loader.Loader
+	resc   ResourceController
+	refc   *ReferenceControl
+	patchc PatchController
+}
+
+// NewMaker is
+func NewMaker(loader loader.Loader, name string) (Maker, error) {
+	conf := &Target{}
+
+	decoder, err := loader.LoadYamlDecoder(loaderPathTarget)
 	if nil != err {
-		return err
+		return nil, err
 	}
 
-	if err := decoder.Decode(t); nil != err {
-		return err
+	if err := decoder.Decode(conf); nil != err {
+		return nil, err
 	}
 
-	decoder, err = t.loader.LoadYamlDecoder(configPathReferenceRule)
+	resc, err := NewResourceControl(loader, conf.Resources)
 	if nil != err {
-		body, err := ioutil.ReadFile(configPathReferenceRule)
-		if nil != err {
-			return err
-		}
-
-		decoder = yaml.NewFormatErrorDecodeFromBytes(body, configPathReferenceRule)
+		return nil, nil
 	}
 
-	if err := t.referenceMap.Load(decoder); nil != err {
-		return err
+	refc, err := NewReferenceControl(loader, loaderPathTarget)
+	if nil != err {
+		return nil, nil
 	}
 
-	return nil
+	patchc, err := NewPatchController(loader, conf.Patchs.RFC6902, conf.Patchs.Strategic)
+	if nil != err {
+		return nil, nil
+	}
+
+	t := &targetMake{
+		name:   name,
+		conf:   conf,
+		resc:   resc,
+		refc:   refc,
+		patchc: patchc,
+	}
+
+	refc.AddRefreshHandle("matedata.name", t.refreshName)
+	refc.AddRefreshHandle("matedata.labels", t.refreshLabels)
+	refc.AddRefreshHandle("matedata.annotations", t.refreshAnnotations)
+
+	return t, nil
 }
 
 // Make is
-func (t *Target) Make() (ResourceMap, error) {
+func (t *targetMake) Make() (resourceMap map[resource.UniqueID]*resource.Resource, err error) {
 	if err := t.loadImports(); nil != err {
 		return nil, err
 	}
 
-	if err := t.loadResources(); nil != err {
-		return nil, err
-	}
-
-	if err := t.Patchs.Make(t.loader, t.resourceMap); nil != err {
-		return nil, err
-	}
-
-	err := t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
-		switch name := res.GetName(); name {
-		case "":
-		case "-":
-			res.SetName(t.Name)
-		default:
-			res.SetName(fmt.Sprintf("%s-%s", t.Name, res.GetName()))
+	if err := t.resc.Range(func(id resource.UniqueID, res *resource.Resource) error {
+		if err := t.patchc.Patch(res); nil != err {
+			return err
 		}
 
-		return t.Matedata.Make(res)
-	})
+		if err := t.modify(res); nil != err {
+			return err
+		}
 
-	if nil != err {
+		return nil
+	}); nil != err {
 		return nil, err
 	}
 
-	return t.generateResourceMap()
+	resourceMap = make(map[resource.UniqueID]*resource.Resource)
+	if err := t.resc.Range(func(id resource.UniqueID, res *resource.Resource) error {
+		if err := t.refc.Refresh(res); nil != err {
+			return err
+		}
+
+		resourceMap[res.ID()] = res
+
+		return nil
+	}); nil != err {
+		return nil, err
+	}
+
+	return resourceMap, nil
 }
 
-func (t *Target) loadImports() error {
-	for _, depend := range t.Imports {
+func (t targetMake) modify(res *resource.Resource) error {
+	targetName := t.name
+
+	switch name := res.GetName(); name {
+	case "":
+	case "-":
+		res.SetName(targetName)
+	default:
+		res.SetName(fmt.Sprintf("%s-%s", targetName, res.GetName()))
+	}
+
+	m := t.conf.Matedata
+
+	res.SetNamespace(m.Namespace)
+	res.SetLabels(t.mergeMap(res.GetLabels(), m.Labels))
+	res.SetAnnotations(t.mergeMap(res.GetAnnotations(), m.Annotations))
+
+	return nil
+
+}
+
+func (t *targetMake) loadImports() error {
+	for _, depend := range t.conf.Imports {
 		resourceMap, err := depend.Make(t.loader)
 		if nil != err {
 			return err
 		}
 
-		if err := t.resourceMap.Merge(false, resourceMap); nil != err {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (t *Target) loadResources() error {
-	for _, path := range t.Resources {
-		decoder, err := t.loader.LoadYamlDecoder(path)
-		if nil != err {
-			return err
-		}
-
-		if err := t.resourceMap.MergeFormDecoder(false, decoder); nil != err {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (t *Target) generateResourceMap() (ResourceMap, error) {
-	resultMap := make(ResourceMap)
-
-	err := t.resourceMap.Range(func(id resource.UniqueID, res *resource.Resource) error {
-		if rule := t.referenceMap.FindByGVK(res.GVK()); nil != rule {
-			if err := rule.Refresh(res, t.referenceCallback); nil != err {
+		for id, res := range resourceMap {
+			if err := t.resc.Add(id, res, false); nil != err {
 				return err
 			}
 		}
 
-		resultMap[res.ID()] = res
-
-		return nil
-	})
-
-	if nil != err {
-		return nil, err
 	}
 
-	return resultMap, nil
+	return nil
 }
 
-func (t *Target) referenceCallback(fs reference.RefreshSpec, in interface{}) (out interface{}, err error) {
-	out = in
-
-	switch fs.Name {
-	case "matedata.name":
-		id := resource.NewUniqueID(in.(string), fs.GVK)
-
-		res := t.resourceMap[id]
-		if nil == res {
-			panic("TODO")
-		}
-
-		out = res.GetName()
-	case "matedata.labels":
-		var val map[string]string
-
-		switch inVal := in.(type) {
-		case map[string]string:
-			val = inVal
-		}
-
-		out = t.Matedata.MergeMap(val, t.Matedata.Labels)
-	case "matedata.annotations":
-		var val map[string]string
-
-		switch inVal := in.(type) {
-		case map[string]string:
-			val = inVal
-		}
-
-		out = t.Matedata.MergeMap(val, t.Matedata.Annotations)
+// MergeMap is
+func (t targetMake) mergeMap(src map[string]string, merge map[string]string) map[string]string {
+	if nil == merge {
+		return src
 	}
 
-	fmt.Printf("[%s] %s:%s(%v) => %v\n", fs.Resource.ID(), fs.Name, fs.Path, in, out)
+	if nil == src {
+		return merge
+	}
 
-	return out, nil
+	for key, val := range merge {
+		src[key] = val
+	}
+
+	return src
+}
+
+func (t *targetMake) refreshName(fs FieldSpec, path resource.Path, in interface{}) (interface{}, error) {
+	switch in.(type) {
+	case string:
+	default:
+		panic("TODO")
+	}
+
+	id := resource.NewUniqueID(in.(string), fs.GVK)
+
+	res := t.resc.Get(id)
+	if nil == res {
+		panic("TODO")
+	}
+
+	return res.GetName(), nil
+}
+
+func (t *targetMake) refreshLabels(fs FieldSpec, path resource.Path, in interface{}) (interface{}, error) {
+	var val map[string]string
+
+	switch inVal := in.(type) {
+	case map[string]string:
+		val = inVal
+	}
+
+	return t.mergeMap(val, t.conf.Matedata.Labels), nil
+}
+
+func (t *targetMake) refreshAnnotations(fs FieldSpec, path resource.Path, in interface{}) (interface{}, error) {
+	var val map[string]string
+
+	switch inVal := in.(type) {
+	case map[string]string:
+		val = inVal
+	}
+
+	return t.mergeMap(val, t.conf.Matedata.Annotations), nil
 }
